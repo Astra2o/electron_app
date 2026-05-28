@@ -1,0 +1,126 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Circle to Lens</title>
+    <link rel="stylesheet" href="home.css" />
+  </head>
+  <body>
+    <main class="home">
+      <!-- ============================== Hero ============================== -->
+      <section class="hero">
+        <img class="orb" src="icon.svg" alt="" aria-hidden="true" />
+        <div class="hero-copy">
+          <span class="badge">v<span id="version">…</span></span>
+          <h1>Circle to Lens</h1>
+          <p>
+            Press <span id="hotkey-chips"><kbd>Alt</kbd><span class="plus">+</span><kbd>Shift</kbd><span class="plus">+</span><kbd>S</kbd></span>
+            anywhere on Windows, draw a circle around anything, and search
+            it with Google Lens — straight to your default browser.
+          </p>
+          <div class="hero-actions">
+            <button id="capture" class="primary">
+              <span class="dot"></span>
+              Try a capture now
+            </button>
+            <button id="open-settings">Customize…</button>
+          </div>
+        </div>
+      </section>
+
+      <!-- ============================ How to use ========================== -->
+      <section class="how">
+        <h2>How to use</h2>
+        <ol class="steps">
+          <li class="step">
+            <div class="step-num">1</div>
+            <div>
+              <h3>Press the hotkey</h3>
+              <p>
+                <span id="hotkey-chips-step">Alt+Shift+S</span>
+                from <em>any</em> app. Circle to Lens stays running in
+                your system tray. Change the combo in
+                <a href="#" class="link-settings">Settings</a>.
+              </p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">2</div>
+            <div>
+              <h3>Draw a circle</h3>
+              <p>
+                Around anything on screen — text, an image, an object.
+                Pick your pencil style in <a href="#" class="link-settings">Settings</a>.
+              </p>
+            </div>
+          </li>
+          <li class="step">
+            <div class="step-num">3</div>
+            <div>
+              <h3>Lens opens in your browser</h3>
+              <p>
+                The image is uploaded from <em>your own</em> browser
+                session, so results render with your Google account —
+                no "image not found" errors.
+              </p>
+            </div>
+          </li>
+        </ol>
+      </section>
+
+      <!-- ============================= Quick toggles ====================== -->
+      <section class="quick">
+        <h2>Quick toggles</h2>
+
+        <label class="toggle-row">
+          <input type="checkbox" id="showHomeOnStartup" />
+          <div>
+            <div class="row-title">Open this window every time the app starts</div>
+            <div class="row-sub">
+              On by default so you can see Circle to Lens is running.
+              Turn off if you'd rather the app stay quiet in your tray.
+            </div>
+          </div>
+        </label>
+
+        <label class="toggle-row">
+          <input type="checkbox" id="startWithWindows" />
+          <div>
+            <div class="row-title">Start with Windows</div>
+            <div class="row-sub">
+              Launch Circle to Lens automatically when you sign in. The
+              app stays in your tray, ready for the hotkey.
+            </div>
+          </div>
+        </label>
+
+        <div class="info-row" id="searchable-row">
+          <div class="info-icon">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round" width="18" height="18">
+              <circle cx="11" cy="11" r="7" />
+              <path d="m20 20-3.5-3.5" />
+            </svg>
+          </div>
+          <div>
+            <div class="row-title">Searchable from the Windows search bar</div>
+            <div class="row-sub" id="searchable-status">
+              Checking shortcut…
+            </div>
+          </div>
+          <button id="recreate-shortcut" class="ghost">Recreate</button>
+        </div>
+      </section>
+
+      <!-- =============================== Footer =========================== -->
+      <footer>
+        <span class="footer-hint">
+          Right-click the tray icon for more options at any time.
+        </span>
+        <button id="done">Done</button>
+      </footer>
+    </main>
+
+    <script src="home.js"></script>
+  </body>
+</html>

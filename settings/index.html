@@ -1,0 +1,132 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Circle to Lens — Settings</title>
+    <link rel="stylesheet" href="settings.css" />
+  </head>
+  <body>
+    <main class="panel">
+      <header>
+        <div class="dot"></div>
+        <h1>Circle to Lens · Settings</h1>
+      </header>
+
+      <!-- ============================== Hotkey ============================== -->
+      <section>
+        <h2>Capture hotkey</h2>
+        <p class="hint">Click the box and press the combo you want.</p>
+        <div class="hotkey-row">
+          <button class="hotkey-input" id="hotkey-input" type="button">
+            <span id="hotkey-display">Alt+Shift+S</span>
+          </button>
+          <button class="ghost" id="hotkey-reset" type="button">Reset to default</button>
+        </div>
+        <div class="hotkey-msg" id="hotkey-msg"></div>
+      </section>
+
+      <!-- ============================== Pencil ============================== -->
+      <section>
+        <h2>Pencil style</h2>
+        <p class="hint">Used while you're drawing the lasso.</p>
+        <div class="pencil-grid" id="pencil-grid">
+          <label class="pencil-card" data-style="rgb">
+            <input type="radio" name="pencilStyle" value="rgb" />
+            <div class="preview preview-rgb"></div>
+            <div class="card-label">RGB glow</div>
+          </label>
+          <label class="pencil-card" data-style="classic">
+            <input type="radio" name="pencilStyle" value="classic" />
+            <div class="preview preview-classic"></div>
+            <div class="card-label">Classic white</div>
+          </label>
+          <label class="pencil-card" data-style="neon">
+            <input type="radio" name="pencilStyle" value="neon" />
+            <div class="preview preview-neon"></div>
+            <div class="card-label">Neon</div>
+          </label>
+          <label class="pencil-card" data-style="ink">
+            <input type="radio" name="pencilStyle" value="ink" />
+            <div class="preview preview-ink"></div>
+            <div class="card-label">Indigo ink</div>
+          </label>
+        </div>
+      </section>
+
+      <!-- ============================ Snap to rect ========================== -->
+      <section>
+        <h2>After you finish drawing</h2>
+        <label class="row toggle">
+          <input type="checkbox" id="convertToRect" />
+          <div>
+            <div class="row-title">Snap to rectangle</div>
+            <div class="row-sub">
+              The lasso turns into a clean rectangle around your shape and
+              everything outside is dimmed. Cleaner result and tighter crop.
+            </div>
+          </div>
+        </label>
+      </section>
+
+      <!-- ============================== Open in ============================= -->
+      <section>
+        <h2>Open the Lens result in</h2>
+        <div class="seg" id="openMode-seg">
+          <label class="seg-item">
+            <input type="radio" name="openMode" value="tab" />
+            <span>New tab</span>
+          </label>
+          <label class="seg-item">
+            <input type="radio" name="openMode" value="window" />
+            <span>New window</span>
+          </label>
+        </div>
+
+        <div class="window-opts" id="window-opts">
+          <h3>Window position</h3>
+          <div class="seg seg-pos" id="windowPosition-seg">
+            <label class="seg-item">
+              <input type="radio" name="windowPosition" value="left" />
+              <span>Left</span>
+            </label>
+            <label class="seg-item">
+              <input type="radio" name="windowPosition" value="center" />
+              <span>Center</span>
+            </label>
+            <label class="seg-item">
+              <input type="radio" name="windowPosition" value="right" />
+              <span>Right</span>
+            </label>
+          </div>
+
+          <h3>Window size</h3>
+          <label class="range">
+            <span class="range-label">Width</span>
+            <input type="range" id="widthPct" min="20" max="100" />
+            <output id="widthOut">35%</output>
+          </label>
+          <label class="range">
+            <span class="range-label">Height</span>
+            <input type="range" id="heightPct" min="20" max="100" />
+            <output id="heightOut">100%</output>
+          </label>
+
+          <div class="preview-frame" aria-hidden="true">
+            <div class="screen">
+              <div class="floating-window" id="frame-preview"></div>
+            </div>
+            <div class="preview-caption">Live preview of the docked window</div>
+          </div>
+        </div>
+      </section>
+
+      <footer>
+        <span class="footer-hint" id="save-status">Saved automatically</span>
+        <button id="close" type="button">Done</button>
+      </footer>
+    </main>
+
+    <script src="settings.js"></script>
+  </body>
+</html>

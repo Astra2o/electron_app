@@ -1,0 +1,36 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Circle to Lens</title>
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <!--
+      Layering (bottom -> top):
+        #screenshot — the screen capture, dimmed, so the user sees what
+                      they're circling (lasso targets the same pixels).
+        #lasso      — transparent canvas where the white pencil + RGB
+                      rainbow glow stroke is drawn.
+        #ui-layer   — hint + toast + cancel hint, pointer-events disabled
+                      so they never interrupt drawing.
+    -->
+    <img id="screenshot" alt="" draggable="false" />
+    <div id="dim"></div>
+    <canvas id="lasso"></canvas>
+
+    <div id="ui-layer">
+      <div id="hint">
+        <span class="pencil-dot"></span>
+        Draw a circle around anything
+        <span class="kbd">Esc</span>
+        <span class="hint-sep">·</span>
+        Release to search with Lens
+      </div>
+      <div id="toast"></div>
+    </div>
+
+    <script src="overlay.js"></script>
+  </body>
+</html>

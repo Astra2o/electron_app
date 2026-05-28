@@ -1,0 +1,219 @@
+/* =====================================================================
+   Circle to Lens — local error / sign-in page (shown when Google
+   returns 403 for the visual-search result page).
+
+   Visual language matches the lasso overlay: dark canvas, white pencil,
+   subtle rainbow accents.
+   ===================================================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100%;
+  height: 100%;
+  background: radial-gradient(circle at 50% 0%, #1a1d28 0%, #0f1014 55%);
+  color: #fff;
+  font-family: -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, Inter, sans-serif;
+  font-size: 15px;
+  line-height: 1.55;
+  -webkit-font-smoothing: antialiased;
+  display: flex;
+  flex-direction: column;
+}
+
+main.card {
+  flex: 1;
+  display: flex;
+  flex-direction: column;
+  align-items: center;
+  justify-content: center;
+  text-align: center;
+  padding: 48px 36px 24px;
+  max-width: 580px;
+  margin: 0 auto;
+}
+
+/* ---------- Icon ---------- */
+
+.icon-wrap {
+  position: relative;
+  width: 84px;
+  height: 84px;
+  margin-bottom: 26px;
+}
+
+.rgb-ring {
+  position: absolute;
+  inset: 0;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #ff5e9a,
+    #ffbe45,
+    #5cf08f,
+    #4cc8ff,
+    #c878ff,
+    #ff5e9a
+  );
+  filter: blur(2px);
+  animation: spin 6s linear infinite;
+  mask: radial-gradient(closest-side, transparent 64%, #000 66%);
+  -webkit-mask: radial-gradient(closest-side, transparent 64%, #000 66%);
+}
+
+.lens-mark {
+  position: absolute;
+  inset: 12px;
+  border-radius: 50%;
+  background: #0f1014;
+  display: grid;
+  place-items: center;
+}
+
+.lens-mark::after {
+  content: "";
+  width: 28px;
+  height: 28px;
+  border-radius: 50%;
+  border: 2.5px solid #fff;
+  box-shadow:
+    0 0 12px rgba(255, 90, 150, 0.55),
+    0 0 22px rgba(80, 200, 255, 0.45),
+    inset 0 0 8px rgba(255, 255, 255, 0.6);
+}
+
+@keyframes spin { to { transform: rotate(360deg); } }
+
+/* ---------- Copy ---------- */
+
+h1 {
+  font-size: 22px;
+  font-weight: 700;
+  margin-bottom: 10px;
+  letter-spacing: -0.01em;
+}
+
+.lead {
+  color: rgba(255, 255, 255, 0.78);
+  margin-bottom: 18px;
+  max-width: 460px;
+}
+
+.hint {
+  font-size: 13.5px;
+  color: rgba(255, 255, 255, 0.62);
+  background: rgba(255, 255, 255, 0.04);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 10px;
+  padding: 12px 16px;
+  margin-bottom: 24px;
+  max-width: 460px;
+}
+
+/* ---------- Buttons ---------- */
+
+.actions {
+  display: flex;
+  flex-wrap: wrap;
+  gap: 10px;
+  justify-content: center;
+  margin-bottom: 28px;
+}
+
+.btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 9px;
+  background: rgba(255, 255, 255, 0.08);
+  border: 1px solid rgba(255, 255, 255, 0.10);
+  color: #fff;
+  font: inherit;
+  font-weight: 600;
+  font-size: 14px;
+  padding: 11px 18px;
+  border-radius: 10px;
+  cursor: pointer;
+  transition: background 0.15s ease, transform 0.1s ease, border-color 0.15s;
+}
+.btn:hover { background: rgba(255, 255, 255, 0.13); }
+.btn:active { transform: translateY(1px); }
+
+.btn.primary {
+  background: linear-gradient(135deg, #ff6ab1, #6ad1ff 60%, #8effc1);
+  color: #1a1a1f;
+  border-color: transparent;
+  box-shadow: 0 10px 28px rgba(106, 209, 255, 0.25);
+}
+.btn.primary:hover { filter: brightness(1.05); background: linear-gradient(135deg, #ff7eb9, #7ad6ff 60%, #95ffc8); }
+
+.btn.ghost {
+  background: transparent;
+  color: rgba(255, 255, 255, 0.72);
+}
+.btn.ghost:hover { background: rgba(255, 255, 255, 0.06); color: #fff; }
+
+.g-mark {
+  width: 16px;
+  height: 16px;
+  background: #fff;
+  border-radius: 50%;
+  display: inline-block;
+  position: relative;
+}
+.g-mark::after {
+  content: "G";
+  position: absolute;
+  inset: 0;
+  display: grid;
+  place-items: center;
+  font-weight: 900;
+  font-size: 11px;
+  color: #1a73e8;
+}
+
+/* ---------- Diagnostics ---------- */
+
+.diag {
+  font-size: 12.5px;
+  color: rgba(255, 255, 255, 0.45);
+  margin-top: 8px;
+  max-width: 90%;
+}
+.diag summary {
+  cursor: pointer;
+  user-select: none;
+  padding: 6px 0;
+}
+.diag code {
+  display: block;
+  text-align: left;
+  word-break: break-all;
+  background: rgba(0, 0, 0, 0.4);
+  border: 1px solid rgba(255, 255, 255, 0.06);
+  border-radius: 8px;
+  padding: 10px 12px;
+  font-family: ui-monospace, "Cascadia Code", "JetBrains Mono", monospace;
+  font-size: 11.5px;
+  color: rgba(255, 255, 255, 0.7);
+  white-space: pre-wrap;
+  margin-top: 6px;
+}
+
+/* ---------- Footer ---------- */
+
+footer {
+  text-align: center;
+  padding: 14px 24px 24px;
+  font-size: 12px;
+  color: rgba(255, 255, 255, 0.4);
+}
+.link {
+  background: none;
+  border: 0;
+  color: inherit;
+  font: inherit;
+  text-decoration: underline;
+  cursor: pointer;
+  padding: 4px 8px;
+}
+.link:hover { color: #fff; }

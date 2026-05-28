@@ -1,0 +1,56 @@
+{
+  "name": "circle-to-lens",
+  "version": "0.1.0",
+  "private": true,
+  "description": "System-wide Circle-to-Lens for Windows. Press a global hotkey, draw a circle anywhere on your screen with a white pencil + RGB-rainbow glow, and Google Lens searches the cropped region instantly.",
+  "author": "Circle to Lens",
+  "license": "MIT",
+  "main": "main.js",
+  "scripts": {
+    "start": "electron .",
+    "dev": "electron . --inspect=9229",
+    "icon": "electron scripts/build-icon.js",
+    "prebuild": "npm run icon",
+    "build": "electron-builder --win",
+    "build:portable": "npm run icon && electron-builder --win portable",
+    "build:installer": "npm run icon && electron-builder --win nsis"
+  },
+  "devDependencies": {
+    "electron": "^32.2.0",
+    "electron-builder": "^25.1.8"
+  },
+  "build": {
+    "appId": "com.circletools.lens",
+    "productName": "Circle to Lens",
+    "directories": {
+      "output": "dist"
+    },
+    "files": [
+      "main.js",
+      "preload.js",
+      "lens.js",
+      "settings-store.js",
+      "start-menu-shortcut.js",
+      "icon-renderer.js",
+      "overlay/**/*",
+      "settings/**/*",
+      "home/**/*",
+      "package.json"
+    ],
+    "win": {
+      "icon": "build/icon.ico",
+      "target": [
+        { "target": "nsis", "arch": ["x64"] },
+        { "target": "portable", "arch": ["x64"] }
+      ]
+    },
+    "nsis": {
+      "oneClick": false,
+      "perMachine": false,
+      "allowToChangeInstallationDirectory": true,
+      "installerIcon": "build/icon.ico",
+      "uninstallerIcon": "build/icon.ico",
+      "installerHeaderIcon": "build/icon.ico"
+    }
+  }
+}

@@ -1,0 +1,53 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Lens needs your account</title>
+    <link rel="stylesheet" href="error.css" />
+  </head>
+  <body>
+    <main class="card">
+      <div class="icon-wrap" aria-hidden="true">
+        <div class="rgb-ring"></div>
+        <div class="lens-mark"></div>
+      </div>
+
+      <h1>Google rejected this Lens result.</h1>
+      <p class="lead">
+        The visual search uploaded fine, but Google is asking us to prove
+        we're a real signed-in user before it'll show the matches.
+      </p>
+
+      <p class="hint" id="signed-in-hint" hidden>
+        You're already signed in to Google here — Google is most likely
+        rate-limiting this app. Wait a few seconds and try again, or
+        open the result in your normal browser.
+      </p>
+      <p class="hint" id="signed-out-hint">
+        Sign in to your Google account once and every future Lens
+        search in this app will just work.
+      </p>
+
+      <div class="actions">
+        <button id="signin" class="btn primary">
+          <span class="g-mark" aria-hidden="true"></span>
+          Sign in to Google
+        </button>
+        <button id="browser" class="btn">Open in default browser</button>
+        <button id="retry" class="btn ghost">Try again</button>
+      </div>
+
+      <details class="diag">
+        <summary>What URL was being loaded?</summary>
+        <code id="url-readout">—</code>
+      </details>
+    </main>
+
+    <footer>
+      <button id="close" class="link">Close this window</button>
+    </footer>
+
+    <script src="error.js"></script>
+  </body>
+</html>
