@@ -25,52 +25,85 @@
     done: document.getElementById("done"),
   };
 
-  /* ---------- populate ---------- */
+  /* ---------- wire critical navigation FIRST ---------- */
+  // Doing this BEFORE any await guarantees that even if the data
+  // fetching below throws, the user can still close the window or
+  // open settings — i.e. they're never stuck on a "dead" Home page.
 
-  const meta = await c2l.getMeta();
-  els.version.textContent = meta.version || "0.0.0";
-
-  const settings = await c2l.getSettings();
-  els.startWithWindows.checked = !!settings.startWithWindows;
-  els.showHomeOnStartup.checked = settings.showHomeOnStartup !== false;
-  paintHotkey(settings.hotkey || meta.hotkey || "Alt+Shift+S");
-
-  await refreshShortcutStatus();
-
-  /* ---------- wire ---------- */
-
-  els.capture.addEventListener("click", () => c2l.capture());
-  els.openSettings.addEventListener("click", () => c2l.openSettings());
-  for (const a of els.linkSettings) {
+  if (els.capture) {
+    els.capture.addEventListener("click", () => c2l.capture());
+  }
+  if (els.openSettings) {
+    els.openSettings.addEventListener("click", () => c2l.openSettings());
+  }
+  for (const a of els.linkSettings || []) {
     a.addEventListener("click", (e) => {
       e.preventDefault();
       c2l.openSettings();
     });
   }
-
-  els.startWithWindows.addEventListener("change", async () => {
-    const next = els.startWithWindows.checked;
-    const ok = await c2l.setStartWithWindows(next);
-    if (!ok) {
-      els.startWithWindows.checked = !next;
-    }
-  });
-
-  els.showHomeOnStartup.addEventListener("change", () => {
-    c2l.setShowHomeOnStartup(els.showHomeOnStartup.checked);
-  });
-
-  els.recreateShortcut.addEventListener("click", async () => {
-    els.searchableStatus.textContent = "Recreating shortcut…";
-    els.searchableStatus.className = "row-sub";
-    const ok = await c2l.recreateShortcut();
-    await refreshShortcutStatus(ok);
-  });
-
-  els.done.addEventListener("click", () => c2l.close());
+  if (els.done) {
+    els.done.addEventListener("click", () => c2l.close());
+  }
   window.addEventListener("keydown", (e) => {
     if (e.key === "Escape") c2l.close();
   });
+
+  /* ---------- populate (best-effort) ---------- */
+
+  let meta = {};
+  let settings = {};
+  try {
+    meta = await c2l.getMeta();
+    if (els.version) els.version.textContent = meta.version || "0.0.0";
+  } catch (err) {
+    console.error("[home] getMeta failed:", err);
+  }
+  try {
+    settings = await c2l.getSettings();
+    if (els.startWithWindows)
+      els.startWithWindows.checked = !!settings.startWithWindows;
+    if (els.showHomeOnStartup)
+      els.showHomeOnStartup.checked = settings.showHomeOnStartup !== false;
+    paintHotkey(settings.hotkey || meta.hotkey || "Alt+Shift+S");
+  } catch (err) {
+    console.error("[home] getSettings failed:", err);
+  }
+
+  try {
+    await refreshShortcutStatus();
+  } catch (err) {
+    console.error("[home] refreshShortcutStatus failed:", err);
+  }
+
+  /* ---------- wire toggles + recreate ---------- */
+
+  if (els.startWithWindows) {
+    els.startWithWindows.addEventListener("change", async () => {
+      const next = els.startWithWindows.checked;
+      const ok = await c2l.setStartWithWindows(next);
+      if (!ok) {
+        els.startWithWindows.checked = !next;
+      }
+    });
+  }
+
+  if (els.showHomeOnStartup) {
+    els.showHomeOnStartup.addEventListener("change", () => {
+      c2l.setShowHomeOnStartup(els.showHomeOnStartup.checked);
+    });
+  }
+
+  if (els.recreateShortcut) {
+    els.recreateShortcut.addEventListener("click", async () => {
+      if (els.searchableStatus) {
+        els.searchableStatus.textContent = "Recreating shortcut…";
+        els.searchableStatus.className = "row-sub";
+      }
+      const ok = await c2l.recreateShortcut();
+      await refreshShortcutStatus(ok);
+    });
+  }
 
   /* ---------- helpers ---------- */
 

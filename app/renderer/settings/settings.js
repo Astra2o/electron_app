@@ -41,13 +41,34 @@
     close: document.getElementById("close"),
   };
 
+  /* ---------- wire close / escape FIRST ---------- */
+  // Same idea as the home renderer: even if `read()` below throws
+  // or `paint()` blows up, the user can always close the window.
+
+  if (els.close) {
+    els.close.addEventListener("click", () => bridge.close());
+  }
+  window.addEventListener("keydown", (e) => {
+    if (e.key === "Escape") bridge.close();
+  });
+
   /** @type {ReturnType<typeof initialSnapshot>} */
-  let state = await bridge.read();
-  paint(state);
+  let state = {};
+  try {
+    state = await bridge.read();
+  } catch (err) {
+    console.error("[settings] read() failed:", err);
+  }
+  try {
+    paint(state || {});
+  } catch (err) {
+    console.error("[settings] paint() failed:", err);
+  }
 
   /* ------------- handlers ------------- */
 
-  setupHotkeyCapture();
+  try { setupHotkeyCapture(); }
+  catch (err) { console.error("[settings] setupHotkeyCapture failed:", err); }
 
   for (const r of els.pencilStyle) {
     r.addEventListener("change", () => {
@@ -117,11 +138,6 @@
     });
   }
 
-  els.close.addEventListener("click", () => bridge.close());
-  window.addEventListener("keydown", (e) => {
-    if (e.key === "Escape") bridge.close();
-  });
-
   /* ------------- helpers ------------- */
 
   function update(patch) {
@@ -141,20 +157,23 @@
   }
 
   function paint(s) {
-    els.hotkeyDisplay.textContent = s.hotkey || "Alt+Shift+S";
+    if (els.hotkeyDisplay)
+      els.hotkeyDisplay.textContent = s.hotkey || "Alt+Shift+S";
 
     for (const r of els.pencilStyle) r.checked = r.value === s.pencilStyle;
-    els.convertToRect.checked = !!s.convertToRect;
+    if (els.convertToRect) els.convertToRect.checked = !!s.convertToRect;
     for (const r of els.openMode) r.checked = r.value === s.openMode;
     for (const r of els.windowPosition)
       r.checked = r.value === s.windowPosition;
 
-    els.widthPct.value = s.windowWidthPct;
-    els.widthOut.textContent = s.windowWidthPct + "%";
-    els.heightPct.value = s.windowHeightPct;
-    els.heightOut.textContent = s.windowHeightPct + "%";
+    if (els.widthPct) els.widthPct.value = s.windowWidthPct ?? 35;
+    if (els.widthOut) els.widthOut.textContent = (s.windowWidthPct ?? 35) + "%";
+    if (els.heightPct) els.heightPct.value = s.windowHeightPct ?? 100;
+    if (els.heightOut)
+      els.heightOut.textContent = (s.windowHeightPct ?? 100) + "%";
 
-    els.showActionMenu.checked = s.showActionMenu !== false;
+    if (els.showActionMenu)
+      els.showActionMenu.checked = s.showActionMenu !== false;
     for (const r of els.defaultAction)
       r.checked = r.value === (s.defaultAction || "lens");
     for (const r of els.menuPosition)
@@ -332,12 +351,12 @@
    */
   function paintPreview(s) {
     const f = els.framePreview;
-    const w = s.windowWidthPct + "%";
-    const h = s.windowHeightPct + "%";
-    f.style.width = w;
-    f.style.height = h;
-    // Vertical centering when not full height.
-    f.style.top = s.windowHeightPct === 100 ? "0" : (100 - s.windowHeightPct) / 2 + "%";
+    if (!f) return;
+    const wpct = s.windowWidthPct ?? 35;
+    const hpct = s.windowHeightPct ?? 100;
+    f.style.width = wpct + "%";
+    f.style.height = hpct + "%";
+    f.style.top = hpct === 100 ? "0" : (100 - hpct) / 2 + "%";
 
     f.style.left = "auto";
     f.style.right = "auto";
@@ -346,7 +365,7 @@
     } else if (s.windowPosition === "right") {
       f.style.right = "0";
     } else {
-      f.style.left = (100 - s.windowWidthPct) / 2 + "%";
+      f.style.left = (100 - wpct) / 2 + "%";
     }
   }
 })();

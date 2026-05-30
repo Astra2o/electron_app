@@ -41,12 +41,41 @@ function open(appIcon) {
     autoHideMenuBar: true,
     show: false,
     webPreferences: {
+      // We deliberately disable the sandbox because our preloads
+      // `require("../shared/ipc-channels")` for channel-name
+      // constants. Electron's sandbox only permits requiring a tiny
+      // built-in whitelist (electron, events, timers, url) — relative
+      // requires silently fail with "module not found", leaving the
+      // contextBridge unexposed and every button inert.
+      //
+      // Since Electron 20+ sandbox defaults to TRUE, so it must be
+      // explicitly set to false, not just omitted.
+      //
+      // Context isolation + `nodeIntegration: false` is still the
+      // modern security baseline; we never load remote content so the
+      // sandbox is overkill here.
       contextIsolation: true,
       nodeIntegration: false,
-      sandbox: true,
+      sandbox: false,
       preload: path.resolve(__dirname, "..", "..", "preload", "home.js"),
     },
   });
+  _win.webContents.on(
+    "did-fail-load",
+    (_e, errCode, errDesc, url, isMainFrame) => {
+      console.error(
+        "[home-window] did-fail-load:",
+        { errCode, errDesc, url, isMainFrame },
+      );
+    },
+  );
+  _win.webContents.on("preload-error", (_e, file, error) => {
+    console.error("[home-window] preload-error:", file, error);
+  });
+  _win.webContents.on("render-process-gone", (_e, details) => {
+    console.error("[home-window] render-process-gone:", details);
+  });
+
   _win.loadFile(
     path.resolve(__dirname, "..", "..", "renderer", "home", "index.html"),
   );
