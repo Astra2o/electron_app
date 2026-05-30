@@ -596,7 +596,14 @@ function openOverlay({ dataUrl, display }) {
     movable: false,
     minimizable: false,
     maximizable: false,
-    fullscreenable: false,
+    // Needs to be true so setSimpleFullScreen() below is allowed to
+    // flip the window into simple-fullscreen mode and push the
+    // Windows taskbar out of the way.
+    fullscreenable: true,
+    // macOS no-op equivalent of the setSimpleFullScreen call we make
+    // after ready-to-show on Windows — keeps behaviour parallel
+    // across platforms if this ever ships to Mac.
+    simpleFullscreen: true,
     hasShadow: false,
     show: false,
     backgroundColor: "#00000000",
@@ -618,6 +625,30 @@ function openOverlay({ dataUrl, display }) {
   overlayWin.once("ready-to-show", () => {
     overlayWin.show();
     overlayWin.focus();
+
+    // Hide the Windows taskbar while the lasso is up. Geometrically
+    // the overlay already covers the full display.bounds, but the
+    // taskbar is an "appbar" with its own z-order and can render
+    // over an alwaysOnTop:'screen-saver' window on Windows 11 — so
+    // the bottom ~40 px of the user's screen ends up showing the
+    // real taskbar *plus* the captured screenshot's taskbar pixels
+    // side-by-side, which is the bug being fixed here.
+    //
+    // setSimpleFullScreen() flips the OS-level "fullscreen
+    // exclusive" hint, which pushes the taskbar underneath us
+    // *without* going through real fullscreen mode (which would
+    // break the transparent: true compositing we rely on). The
+    // window is destroyed in `closed`, so the taskbar returns
+    // automatically when the user submits or hits Esc.
+    try {
+      overlayWin.setSimpleFullScreen(true);
+    } catch (err) {
+      console.warn(
+        "[main] setSimpleFullScreen failed:",
+        err?.message || err,
+      );
+    }
+
     const settings = settingsStore.read();
     overlayWin.webContents.send("overlay:init", { dataUrl, display, settings });
   });
