@@ -1,0 +1,1050 @@
+/* =====================================================================
+   Circle to Lens — overlay styles.
+
+   The window is transparent + always-on-top + frameless. We render the
+   captured screen as the background image so the lasso visually lines
+   up with what the user sees. A dim layer dramatises the cursor focus
+   without losing visibility.
+   ===================================================================== */
+
+* { margin: 0; padding: 0; box-sizing: border-box; }
+
+html, body {
+  width: 100vw;
+  height: 100vh;
+  overflow: hidden;
+  background: transparent;
+  user-select: none;
+  -webkit-user-select: none;
+  cursor: crosshair;
+  font-family: -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, Inter, sans-serif;
+  color: #fff;
+}
+
+/* Cursor + crosshair behaviour depends on the active action mode.
+   - lens / copy : crosshair (drawing the lasso)
+   - ocr         : default cursor (we want a text-cursor only over
+                                   the .ocr-line spans themselves)
+   - translate   : default cursor (clicking translation pills) */
+/* Translate / Select-text / Copy all use a Snipping-Tool-style
+   rectangle drag, so the empty drag-zone shows a crosshair "+" to
+   advertise "you can draw here". Interactive children (.action,
+   .lang-picker, .selection-toolbar buttons, .translate-line,
+   .ocr-line, .result-card …) each set their own cursor — `pointer`
+   for clickables, `text` for the I-beam over recognised text — so
+   the crosshair only ever shows over actual draggable space.
+
+   (Lens mode already inherits `cursor: crosshair` from the base
+   `body` rule above, so its behaviour is unchanged.) */
+body[data-mode="ocr"],
+body[data-mode="copy"],
+body[data-mode="translate"] {
+  cursor: crosshair;
+}
+
+#screenshot {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  object-fit: fill;
+  pointer-events: none;
+  -webkit-user-drag: none;
+  user-drag: none;
+}
+
+#dim {
+  position: fixed;
+  inset: 0;
+  background: radial-gradient(
+      circle at 50% 50%,
+      rgba(0, 0, 0, 0.12),
+      rgba(0, 0, 0, 0.32) 60%,
+      rgba(0, 0, 0, 0.45)
+    );
+  pointer-events: none;
+}
+
+#lasso {
+  position: fixed;
+  inset: 0;
+  width: 100vw;
+  height: 100vh;
+  display: block;
+}
+
+#ui-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 10;
+}
+
+/* ---------- Hint chip ---------- */
+
+#hint {
+  position: absolute;
+  top: 18px;
+  left: 50%;
+  transform: translateX(-50%);
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  background: rgba(20, 20, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 9px 18px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  letter-spacing: 0.2px;
+  color: #fff;
+  backdrop-filter: blur(16px) saturate(140%);
+  -webkit-backdrop-filter: blur(16px) saturate(140%);
+  box-shadow:
+    0 10px 32px rgba(0, 0, 0, 0.45),
+    0 0 0 1px rgba(255, 255, 255, 0.04) inset;
+  opacity: 0;
+  transform: translate(-50%, -8px);
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+#hint.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+.hint-sep {
+  opacity: 0.45;
+  margin: 0 -2px;
+}
+
+.kbd {
+  display: inline-block;
+  padding: 1px 6px;
+  border: 1px solid rgba(255, 255, 255, 0.25);
+  border-radius: 5px;
+  font-size: 11px;
+  font-family: ui-monospace, "JetBrains Mono", "Cascadia Code", monospace;
+  background: rgba(255, 255, 255, 0.06);
+  letter-spacing: 0.5px;
+}
+
+/* Tiny animated white dot — matches the pencil aesthetic. */
+.pencil-dot {
+  width: 8px;
+  height: 8px;
+  border-radius: 50%;
+  background: #fff;
+  box-shadow:
+    0 0 8px rgba(255, 80, 120, 0.85),
+    0 0 14px rgba(80, 200, 255, 0.65),
+    0 0 22px rgba(120, 255, 160, 0.45);
+  animation: pencil-shimmer 2.4s linear infinite;
+}
+@keyframes pencil-shimmer {
+  0% {
+    box-shadow:
+      0 0 8px rgba(255, 80, 120, 0.85),
+      0 0 14px rgba(80, 200, 255, 0.65),
+      0 0 22px rgba(120, 255, 160, 0.45);
+  }
+  33% {
+    box-shadow:
+      0 0 8px rgba(120, 255, 160, 0.85),
+      0 0 14px rgba(255, 80, 120, 0.65),
+      0 0 22px rgba(80, 200, 255, 0.45);
+  }
+  66% {
+    box-shadow:
+      0 0 8px rgba(80, 200, 255, 0.85),
+      0 0 14px rgba(120, 255, 160, 0.65),
+      0 0 22px rgba(255, 80, 120, 0.45);
+  }
+  100% {
+    box-shadow:
+      0 0 8px rgba(255, 80, 120, 0.85),
+      0 0 14px rgba(80, 200, 255, 0.65),
+      0 0 22px rgba(120, 255, 160, 0.45);
+  }
+}
+
+/* ---------- Action menu (Material-minimal floating toolbar) ----------
+
+   Sits on top of the dim layer but below the lasso canvas (z-index
+   wise it's actually inside #ui-layer which is z-index:10, while
+   the lasso is at z-index auto = above #dim and #screenshot but
+   below #ui-layer). Pointer events ARE enabled on the menu so the
+   user can click the action buttons; the rest of #ui-layer stays
+   pointer-events:none so it never intercepts drawing.
+
+   We support four dock positions matching Windows taskbar
+   alignment: top/bottom = horizontal strip, left/right = vertical
+   strip. Position is set via [data-position="..."] on #action-menu.
+*/
+
+#action-menu {
+  position: absolute;
+  display: flex;
+  gap: 6px;
+  padding: 6px;
+  border-radius: 16px;
+  background: rgba(20, 20, 28, 0.78);
+  border: 1px solid rgba(255, 255, 255, 0.07);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow:
+    0 16px 40px rgba(0, 0, 0, 0.55),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  pointer-events: auto;
+  opacity: 0;
+  transform: translate(-50%, -8px) scale(0.96);
+  transition:
+    opacity 0.22s ease,
+    transform 0.22s cubic-bezier(0.2, 0.8, 0.2, 1);
+  z-index: 11;
+}
+
+/* Visible when overlay first opens, hides on first pointerdown. */
+#action-menu.show {
+  opacity: 1;
+}
+
+/* ----- Position variants ----- */
+
+#action-menu[data-position="top"] {
+  top: 64px;
+  left: 50%;
+  flex-direction: row;
+}
+#action-menu[data-position="top"].show {
+  transform: translate(-50%, 0) scale(1);
+}
+
+#action-menu[data-position="bottom"] {
+  bottom: 88px;
+  left: 50%;
+  flex-direction: row;
+  transform: translate(-50%, 8px) scale(0.96);
+}
+#action-menu[data-position="bottom"].show {
+  transform: translate(-50%, 0) scale(1);
+}
+
+#action-menu[data-position="left"] {
+  left: 24px;
+  top: 50%;
+  flex-direction: column;
+  transform: translate(-8px, -50%) scale(0.96);
+}
+#action-menu[data-position="left"].show {
+  transform: translate(0, -50%) scale(1);
+}
+
+#action-menu[data-position="right"] {
+  right: 24px;
+  top: 50%;
+  flex-direction: column;
+  transform: translate(8px, -50%) scale(0.96);
+}
+#action-menu[data-position="right"].show {
+  transform: translate(0, -50%) scale(1);
+}
+
+/* Fade out cleanly when drawing starts. */
+#action-menu.hide {
+  opacity: 0;
+  pointer-events: none;
+}
+
+/* ----- Action button (pill) ----- */
+
+#action-menu .action {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 9px 14px;
+  min-height: 38px;
+  border-radius: 12px;
+  border: 1px solid transparent;
+  background: transparent;
+  color: rgba(232, 234, 240, 0.85);
+  font: 500 13px/1 -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, Inter, sans-serif;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  transition:
+    background 0.16s ease,
+    color 0.16s ease,
+    border-color 0.16s ease,
+    transform 0.12s ease;
+}
+
+#action-menu .action:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+
+#action-menu .action:active {
+  transform: scale(0.97);
+}
+
+#action-menu .action:focus-visible {
+  outline: none;
+  border-color: rgba(255, 255, 255, 0.22);
+}
+
+/* Selected (current mode) — subtle filled treatment, Material-ish. */
+#action-menu .action.selected {
+  background: linear-gradient(
+    135deg,
+    rgba(255, 106, 177, 0.22),
+    rgba(106, 209, 255, 0.22)
+  );
+  color: #fff;
+  border-color: rgba(255, 255, 255, 0.12);
+  box-shadow:
+    0 4px 14px rgba(106, 209, 255, 0.18),
+    0 0 0 1px rgba(255, 255, 255, 0.06) inset;
+}
+
+#action-menu .action-icon {
+  display: inline-flex;
+  width: 18px;
+  height: 18px;
+  flex-shrink: 0;
+}
+#action-menu .action-icon svg {
+  width: 100%;
+  height: 100%;
+}
+
+/* In vertical layouts we keep label visible but stacked under the
+   icon for a more compact "rail" look. */
+#action-menu[data-position="left"] .action,
+#action-menu[data-position="right"] .action {
+  flex-direction: column;
+  gap: 4px;
+  padding: 10px 8px;
+  min-width: 64px;
+}
+#action-menu[data-position="left"] .action-label,
+#action-menu[data-position="right"] .action-label {
+  font-size: 11px;
+  letter-spacing: 0.3px;
+}
+
+/* ---------- Toast ---------- */
+
+#toast {
+  position: absolute;
+  bottom: 34px;
+  left: 50%;
+  transform: translate(-50%, 8px);
+  background: rgba(20, 20, 28, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  padding: 10px 22px;
+  border-radius: 999px;
+  font-size: 13px;
+  font-weight: 500;
+  color: #fff;
+  backdrop-filter: blur(16px);
+  -webkit-backdrop-filter: blur(16px);
+  box-shadow: 0 12px 32px rgba(0, 0, 0, 0.5);
+  opacity: 0;
+  transition: opacity 0.22s ease, transform 0.22s ease;
+}
+#toast.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+#toast.error {
+  background: rgba(168, 38, 70, 0.92);
+  border-color: rgba(255, 120, 150, 0.25);
+}
+
+#toast .spinner {
+  display: inline-block;
+  width: 13px;
+  height: 13px;
+  border: 2px solid rgba(255, 255, 255, 0.22);
+  border-top-color: #fff;
+  border-radius: 50%;
+  vertical-align: -2px;
+  margin-right: 9px;
+  animation: spin 0.75s linear infinite;
+}
+@keyframes spin { to { transform: rotate(360deg); } }
+
+#toast .check {
+  display: inline-block;
+  width: 14px;
+  height: 14px;
+  border-radius: 50%;
+  background: linear-gradient(135deg, #ff6ab1, #6ad1ff, #92ff9b);
+  vertical-align: -2px;
+  margin-right: 9px;
+  position: relative;
+}
+#toast .check::after {
+  content: "";
+  position: absolute;
+  left: 4px;
+  top: 2px;
+  width: 4px;
+  height: 8px;
+  border: solid #fff;
+  border-width: 0 2px 2px 0;
+  transform: rotate(45deg);
+}
+
+/* ---------- Fade-out when closing ---------- */
+
+body.fading {
+  transition: opacity 0.24s ease;
+  opacity: 0;
+}
+
+/* =====================================================================
+   Language picker (only shown when the Translate action is selected)
+   =====================================================================
+   Positioned absolutely inside #ui-layer (which is pointer-events:
+   none). The picker re-enables pointer events on itself so it can
+   be clicked, but stays out of the way of the lasso when not in
+   use. overlay.js anchors it next to the action menu based on the
+   menu's dock position.
+   ===================================================================== */
+
+#lang-picker {
+  position: absolute;
+  pointer-events: auto;
+  z-index: 12;
+  display: flex;
+  flex-direction: column;
+  align-items: stretch;
+  gap: 6px;
+  /* Default anchor: just below a top-docked action menu. overlay.js
+     overrides these for left/right/bottom dock positions. */
+  top: 116px;
+  left: 50%;
+  transform: translate(-50%, -6px);
+  opacity: 0;
+  transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+
+#lang-picker.show {
+  opacity: 1;
+  transform: translate(-50%, 0);
+}
+
+#lang-picker[data-position="left"]    { transform: translate(-6px, 0); }
+#lang-picker[data-position="left"].show   { transform: translate(0, 0); }
+#lang-picker[data-position="right"]   { transform: translate(6px, 0); }
+#lang-picker[data-position="right"].show  { transform: translate(0, 0); }
+#lang-picker[data-position="bottom"]  { transform: translate(-50%, 6px); }
+#lang-picker[data-position="bottom"].show { transform: translate(-50%, 0); }
+
+.lang-button {
+  display: inline-flex;
+  align-items: center;
+  gap: 8px;
+  padding: 8px 12px;
+  height: 34px;
+  border-radius: 999px;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  background: rgba(20, 20, 28, 0.78);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  color: rgba(232, 234, 240, 0.95);
+  font: 500 12.5px/1 -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, Inter, sans-serif;
+  letter-spacing: 0.2px;
+  cursor: pointer;
+  box-shadow: 0 10px 28px rgba(0, 0, 0, 0.45);
+  transition: background 0.16s ease, border-color 0.16s ease,
+    transform 0.12s ease;
+}
+.lang-button:hover {
+  background: rgba(38, 40, 52, 0.85);
+  border-color: rgba(255, 255, 255, 0.16);
+}
+.lang-button:active { transform: scale(0.97); }
+.lang-button[aria-expanded="true"] {
+  background: linear-gradient(135deg,
+    rgba(255, 106, 177, 0.20),
+    rgba(106, 209, 255, 0.20));
+  border-color: rgba(255, 255, 255, 0.18);
+}
+
+.lang-globe svg,
+.lang-chevron svg {
+  width: 14px;
+  height: 14px;
+  display: block;
+}
+.lang-chevron {
+  opacity: 0.7;
+  transition: transform 0.18s ease;
+}
+.lang-button[aria-expanded="true"] .lang-chevron {
+  transform: rotate(180deg);
+}
+
+#lang-target-name {
+  color: #fff;
+  font-weight: 600;
+}
+
+/* ----- Dropdown list ----- */
+
+#lang-picker-list {
+  list-style: none;
+  margin: 0;
+  padding: 6px;
+  max-height: 320px;
+  overflow-y: auto;
+  border-radius: 14px;
+  background: rgba(16, 18, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(24px) saturate(160%);
+  -webkit-backdrop-filter: blur(24px) saturate(160%);
+  box-shadow: 0 20px 50px rgba(0, 0, 0, 0.6);
+  min-width: 220px;
+  /* Custom scrollbar */
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+#lang-picker-list::-webkit-scrollbar { width: 8px; }
+#lang-picker-list::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+}
+
+#lang-picker-list li {
+  display: flex;
+  align-items: center;
+  gap: 10px;
+  padding: 9px 12px;
+  border-radius: 9px;
+  cursor: pointer;
+  color: rgba(232, 234, 240, 0.85);
+  font: 500 13px/1.2 -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, sans-serif;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+#lang-picker-list li:hover {
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+}
+#lang-picker-list li[aria-selected="true"] {
+  background: linear-gradient(135deg,
+    rgba(255, 106, 177, 0.22),
+    rgba(106, 209, 255, 0.22));
+  color: #fff;
+}
+#lang-picker-list .lang-emoji {
+  font-size: 17px;
+  width: 22px;
+  text-align: center;
+}
+#lang-picker-list .lang-name { flex: 1; }
+#lang-picker-list .lang-code {
+  font-size: 11px;
+  color: rgba(232, 234, 240, 0.45);
+  letter-spacing: 0.5px;
+  text-transform: uppercase;
+}
+
+/* =====================================================================
+   Result card (loading + success + error states in one element)
+   =====================================================================
+   Centered, glass, big enough to read text in. Has three exclusive
+   states driven by classes on #result-card:
+     .state-loading  — show .result-loading, hide the rest
+     .state-result   — show .result-body
+     .state-error    — show .result-error
+   ===================================================================== */
+
+.result-card {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%) scale(0.94);
+  width: min(560px, 86vw);
+  max-height: 78vh;
+  overflow-y: auto;
+  padding: 28px 28px 24px;
+  border-radius: 20px;
+  background: rgba(16, 18, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(28px) saturate(170%);
+  -webkit-backdrop-filter: blur(28px) saturate(170%);
+  box-shadow:
+    0 28px 80px rgba(0, 0, 0, 0.65),
+    0 0 0 1px rgba(255, 255, 255, 0.03) inset;
+  color: #e6e8ee;
+  pointer-events: auto;
+  opacity: 0;
+  z-index: 20;
+  transition: opacity 0.24s ease, transform 0.28s cubic-bezier(0.2, 0.8, 0.2, 1);
+  scrollbar-width: thin;
+  scrollbar-color: rgba(255, 255, 255, 0.18) transparent;
+}
+.result-card::-webkit-scrollbar { width: 8px; }
+.result-card::-webkit-scrollbar-thumb {
+  background: rgba(255, 255, 255, 0.18);
+  border-radius: 4px;
+}
+.result-card.show {
+  opacity: 1;
+  transform: translate(-50%, -50%) scale(1);
+}
+
+.result-close {
+  position: absolute;
+  top: 14px;
+  right: 14px;
+  width: 28px;
+  height: 28px;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+  border-radius: 8px;
+  border: 0;
+  background: rgba(255, 255, 255, 0.04);
+  color: rgba(232, 234, 240, 0.75);
+  cursor: pointer;
+  transition: background 0.16s ease, color 0.16s ease;
+}
+.result-close svg { width: 14px; height: 14px; display: block; }
+.result-close:hover {
+  background: rgba(255, 255, 255, 0.1);
+  color: #fff;
+}
+
+/* ----- State visibility ----- */
+
+.result-loading, .result-body, .result-error { display: none; }
+.result-card.state-loading .result-loading { display: block; }
+.result-card.state-result  .result-body    { display: block; }
+.result-card.state-error   .result-error   { display: block; }
+
+/* ----- Loading state ----- */
+
+.result-loading {
+  text-align: center;
+  padding: 14px 4px 6px;
+}
+
+.loading-ring {
+  width: 84px;
+  height: 84px;
+  margin: 0 auto 22px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #ff2d55 0%, #ff9500 14%, #ffcc00 28%,
+    #34c759 46%, #5ac8fa 62%, #af52de 80%, #ff2d55 100%
+  );
+  -webkit-mask: radial-gradient(circle, transparent 56%, black 58%);
+          mask: radial-gradient(circle, transparent 56%, black 58%);
+  animation: result-spin 1.6s linear infinite;
+}
+@keyframes result-spin { to { transform: rotate(360deg); } }
+
+.loading-status {
+  font-size: 17px;
+  font-weight: 600;
+  letter-spacing: 0.1px;
+  color: #fff;
+  margin-bottom: 6px;
+}
+
+.loading-progress {
+  position: relative;
+  width: 100%;
+  height: 4px;
+  margin: 18px auto 12px;
+  border-radius: 4px;
+  background: rgba(255, 255, 255, 0.06);
+  overflow: hidden;
+}
+.loading-bar {
+  position: absolute;
+  inset: 0 auto 0 -40%;
+  width: 40%;
+  background: linear-gradient(90deg,
+    transparent,
+    #6ad1ff,
+    #af52de,
+    transparent);
+  animation: loading-bar-slide 1.5s ease-in-out infinite;
+  border-radius: 4px;
+}
+@keyframes loading-bar-slide {
+  0%   { left: -45%; }
+  100% { left: 105%; }
+}
+
+.loading-sub {
+  font-size: 12px;
+  color: rgba(232, 234, 240, 0.5);
+  margin-top: 4px;
+  min-height: 16px; /* prevent jump when text empty */
+}
+
+/* ----- Result state ----- */
+
+.result-meta {
+  display: flex;
+  align-items: center;
+  gap: 8px;
+  margin-bottom: 18px;
+  margin-top: -4px;
+  flex-wrap: wrap;
+}
+.result-pill {
+  display: inline-flex;
+  align-items: center;
+  padding: 4px 10px;
+  border-radius: 999px;
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.4px;
+  text-transform: uppercase;
+  background: rgba(255, 255, 255, 0.06);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  color: rgba(232, 234, 240, 0.85);
+}
+.result-pill-target {
+  background: linear-gradient(135deg,
+    rgba(255, 106, 177, 0.20),
+    rgba(106, 209, 255, 0.20));
+  border-color: rgba(255, 255, 255, 0.14);
+  color: #fff;
+}
+
+.result-section + .result-section { margin-top: 18px; }
+.result-label {
+  font-size: 11.5px;
+  font-weight: 600;
+  letter-spacing: 0.6px;
+  text-transform: uppercase;
+  color: rgba(232, 234, 240, 0.55);
+  margin-bottom: 8px;
+}
+.result-text {
+  font-size: 15.5px;
+  line-height: 1.55;
+  letter-spacing: 0.1px;
+  white-space: pre-wrap;
+  word-break: break-word;
+  user-select: text;
+  -webkit-user-select: text;
+  margin-bottom: 12px;
+}
+.result-translated { color: #fff; font-weight: 500; font-size: 17px; line-height: 1.5; }
+.result-original  { color: rgba(232, 234, 240, 0.7); font-size: 14px; }
+
+.result-original-wrap {
+  border-top: 1px solid rgba(255, 255, 255, 0.06);
+  padding-top: 14px;
+}
+.result-original-wrap summary {
+  cursor: pointer;
+  font-size: 12.5px;
+  color: rgba(232, 234, 240, 0.6);
+  user-select: none;
+  -webkit-user-select: none;
+  padding: 4px 0;
+}
+.result-original-wrap summary:hover { color: #fff; }
+
+.result-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 7px;
+  padding: 8px 14px;
+  border-radius: 10px;
+  border: 1px solid rgba(255, 255, 255, 0.12);
+  background: rgba(255, 255, 255, 0.06);
+  color: #fff;
+  font: 500 13px/1 -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, sans-serif;
+  cursor: pointer;
+  transition: background 0.16s ease, transform 0.12s ease;
+}
+.result-btn svg { width: 14px; height: 14px; }
+.result-btn:hover { background: rgba(255, 255, 255, 0.1); }
+.result-btn:active { transform: scale(0.97); }
+.result-btn-ghost {
+  background: transparent;
+  border-color: rgba(255, 255, 255, 0.10);
+  color: rgba(232, 234, 240, 0.85);
+}
+
+.result-btn.copied {
+  background: linear-gradient(135deg, rgba(146, 255, 155, 0.25), rgba(106, 209, 255, 0.20));
+  border-color: rgba(146, 255, 155, 0.35);
+}
+
+/* ----- Error state ----- */
+
+.result-error {
+  text-align: center;
+  padding: 16px 4px;
+}
+.error-icon {
+  width: 56px;
+  height: 56px;
+  margin: 0 auto 14px;
+  border-radius: 50%;
+  background: rgba(255, 107, 107, 0.12);
+  color: #ff6b6b;
+  display: inline-flex;
+  align-items: center;
+  justify-content: center;
+}
+.error-icon svg { width: 28px; height: 28px; }
+.error-title { font-size: 16px; font-weight: 600; margin-bottom: 6px; }
+.error-message {
+  font-size: 13.5px;
+  color: rgba(232, 234, 240, 0.65);
+  margin-bottom: 16px;
+  white-space: pre-wrap;
+}
+
+/* =====================================================================
+   #text-layer  —  invisible-but-selectable text spans for OCR mode
+   =====================================================================
+   For "Select text" / "Copy" actions. After full-screen OCR, one
+   <span class="ocr-line"> is created per detected line, positioned
+   absolutely at the line's CSS-px bbox. Text colour is fully
+   transparent so the screenshot beneath shows through unchanged,
+   but `user-select: text` + matching font-size means dragging the
+   mouse selects the same characters that are visible — and the
+   browser's ::selection highlight paints over the screenshot, so
+   the visible text *appears* highlighted.
+   ===================================================================== */
+
+#text-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;   /* container transparent to clicks */
+  z-index: 6;
+}
+
+.ocr-line {
+  position: absolute;
+  /* Selectable + targetable */
+  user-select: text;
+  -webkit-user-select: text;
+  pointer-events: auto;
+  cursor: text;
+  /* Invisible: text + background both fully transparent.
+     We keep color: transparent (not display:none) so layout/selection
+     still works. */
+  color: transparent;
+  background: transparent;
+  /* Layout: a single line of text, no wrapping (each line is its
+     own span). overflow:hidden keeps wide-line text from spilling. */
+  white-space: nowrap;
+  overflow: hidden;
+  letter-spacing: 0;
+  /* The font-size is set inline per-span to match bbox height. We
+     give a tight line-height so the highlight matches the line. */
+  line-height: 1;
+  /* Use a font with similar metrics across systems. The visible
+     characters are NOT this font (they're in the screenshot image),
+     so what matters is the WIDTH of each character roughly matches
+     so the selection highlight tracks correctly. */
+  font-family: Arial, "Helvetica Neue", Helvetica, sans-serif;
+  font-weight: 400;
+  /* Subtle hover hint */
+  transition: background 0.12s ease;
+}
+
+.ocr-line:hover {
+  background: rgba(106, 209, 255, 0.06);
+}
+
+/* Selection highlight — visible over any screenshot. */
+.ocr-line::selection {
+  background: rgba(106, 209, 255, 0.45);
+  color: transparent;
+}
+.ocr-line::-moz-selection {
+  background: rgba(106, 209, 255, 0.45);
+  color: transparent;
+}
+
+/* =====================================================================
+   #translate-layer  —  in-place translation overlays
+   =====================================================================
+   For the Translate action. One pill per OCR line, anchored to the
+   same bbox, containing the translated text. The pill covers the
+   original line so the translation reads cleanly. Click a pill to
+   peek the original (handled in JS).
+   ===================================================================== */
+
+#translate-layer {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 7;
+}
+
+.translate-line {
+  position: absolute;
+  display: flex;
+  align-items: center;
+  padding: 0 6px;
+  pointer-events: auto;
+  cursor: pointer;
+  /* Frosted-glass: transparent backdrop with a heavy blur so the
+     underlying screenshot still reads through subtly but the
+     translated text on top is always legible. The text-shadow
+     guarantees contrast over both dark AND light screenshots. */
+  background: rgba(18, 20, 30, 0.30);
+  backdrop-filter: blur(16px) saturate(170%);
+  -webkit-backdrop-filter: blur(16px) saturate(170%);
+  border: 1px solid rgba(255, 255, 255, 0.16);
+  border-radius: 4px;
+  color: #fff;
+  text-shadow:
+    0 1px 2px rgba(0, 0, 0, 0.85),
+    0 0 6px rgba(0, 0, 0, 0.55);
+  /* Text fits the line height — set inline per line. */
+  font-family: -apple-system, "Segoe UI Variable", "Segoe UI", Roboto,
+    Inter, Arial, sans-serif;
+  font-weight: 500;
+  line-height: 1.1;
+  white-space: nowrap;
+  overflow: hidden;
+  text-overflow: ellipsis;
+  box-shadow:
+    0 4px 14px rgba(0, 0, 0, 0.35),
+    inset 0 1px 0 rgba(255, 255, 255, 0.08);
+  transition:
+    box-shadow 0.16s ease,
+    border-color 0.16s ease,
+    background 0.16s ease;
+}
+.translate-line:hover {
+  background: rgba(18, 20, 30, 0.42);
+  border-color: rgba(106, 209, 255, 0.45);
+  box-shadow:
+    0 6px 18px rgba(0, 0, 0, 0.5),
+    0 0 0 1px rgba(106, 209, 255, 0.25),
+    inset 0 1px 0 rgba(255, 255, 255, 0.10);
+}
+/* While the user holds the cursor on a translated line, show a tiny
+   "original" tooltip via a data attribute. JS keeps the title in
+   sync. We don't use plain title= because Windows tooltips are slow
+   to appear; this CSS popover is instant. */
+.translate-line[data-original]:hover::after {
+  content: attr(data-original);
+  position: absolute;
+  left: 0;
+  top: calc(100% + 4px);
+  padding: 4px 8px;
+  background: rgba(0, 0, 0, 0.9);
+  color: rgba(232, 234, 240, 0.95);
+  font-size: 12px;
+  font-weight: 400;
+  border-radius: 4px;
+  white-space: nowrap;
+  pointer-events: none;
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  z-index: 1;
+  max-width: 80vw;
+  overflow: hidden;
+  text-overflow: ellipsis;
+}
+
+/* =====================================================================
+   #ocr-loading  —  centered pill + sweeping scanline during OCR
+   ===================================================================== */
+
+#ocr-loading {
+  position: fixed;
+  inset: 0;
+  pointer-events: none;
+  z-index: 15;
+}
+
+.ocr-loading-pill {
+  position: absolute;
+  top: 50%;
+  left: 50%;
+  transform: translate(-50%, -50%);
+  display: inline-flex;
+  align-items: center;
+  gap: 12px;
+  padding: 12px 22px 12px 14px;
+  border-radius: 999px;
+  background: rgba(16, 18, 26, 0.92);
+  border: 1px solid rgba(255, 255, 255, 0.08);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  color: #fff;
+  font: 600 14px/1 -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, Inter, sans-serif;
+  letter-spacing: 0.2px;
+  box-shadow: 0 18px 50px rgba(0, 0, 0, 0.6);
+}
+.ocr-loading-ring {
+  width: 22px;
+  height: 22px;
+  border-radius: 50%;
+  background: conic-gradient(
+    from 0deg,
+    #ff2d55, #ff9500, #ffcc00, #34c759, #5ac8fa, #af52de, #ff2d55
+  );
+  -webkit-mask: radial-gradient(circle, transparent 50%, black 52%);
+          mask: radial-gradient(circle, transparent 50%, black 52%);
+  animation: result-spin 1.4s linear infinite;
+}
+
+/* =====================================================================
+   #selection-toolbar  —  appears next to a text selection
+   ===================================================================== */
+
+#selection-toolbar {
+  position: fixed;
+  z-index: 18;
+  display: inline-flex;
+  align-items: center;
+  gap: 4px;
+  padding: 4px;
+  border-radius: 12px;
+  background: rgba(16, 18, 26, 0.96);
+  border: 1px solid rgba(255, 255, 255, 0.1);
+  backdrop-filter: blur(20px) saturate(160%);
+  -webkit-backdrop-filter: blur(20px) saturate(160%);
+  box-shadow: 0 14px 36px rgba(0, 0, 0, 0.55);
+  pointer-events: auto;
+  opacity: 0;
+  transform: translateY(-4px) scale(0.96);
+  transition: opacity 0.16s ease, transform 0.18s cubic-bezier(0.2, 0.8, 0.2, 1);
+}
+#selection-toolbar.show {
+  opacity: 1;
+  transform: translateY(0) scale(1);
+}
+
+.sel-btn {
+  display: inline-flex;
+  align-items: center;
+  gap: 6px;
+  padding: 6px 10px;
+  border-radius: 9px;
+  border: 0;
+  background: transparent;
+  color: rgba(232, 234, 240, 0.9);
+  font: 500 12.5px/1 -apple-system, "Segoe UI Variable", "Segoe UI", Roboto, Inter, sans-serif;
+  cursor: pointer;
+  transition: background 0.14s ease, color 0.14s ease;
+}
+.sel-btn:hover { background: rgba(255, 255, 255, 0.08); color: #fff; }
+.sel-btn:active { transform: scale(0.97); }
+.sel-btn svg { width: 14px; height: 14px; }
+.sel-btn.copied {
+  background: linear-gradient(135deg,
+    rgba(146, 255, 155, 0.25),
+    rgba(106, 209, 255, 0.20));
+  color: #fff;
+}

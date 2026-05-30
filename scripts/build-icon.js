@@ -23,7 +23,7 @@
 const fs = require("node:fs");
 const path = require("node:path");
 const { app, nativeImage } = require("electron");
-const { renderSvgToPngBuffer } = require("../icon-renderer");
+const { renderSvgToPngBuffer } = require("../app/main/services/icon-renderer");
 
 const OUT_DIR = path.resolve(__dirname, "..", "build");
 const OUT_PNG = path.join(OUT_DIR, "icon.png");

@@ -1,0 +1,257 @@
+<!doctype html>
+<html lang="en">
+  <head>
+    <meta charset="utf-8" />
+    <meta name="viewport" content="width=device-width, initial-scale=1" />
+    <title>Circle to Lens</title>
+    <link rel="stylesheet" href="overlay.css" />
+  </head>
+  <body>
+    <!--
+      Layering (bottom -> top):
+        #screenshot — the screen capture, dimmed, so the user sees what
+                      they're circling (lasso targets the same pixels).
+        #lasso      — transparent canvas where the white pencil + RGB
+                      rainbow glow stroke is drawn.
+        #ui-layer   — hint + toast + cancel hint, pointer-events disabled
+                      so they never interrupt drawing.
+    -->
+    <img id="screenshot" alt="" draggable="false" />
+    <div id="dim"></div>
+    <canvas id="lasso"></canvas>
+
+    <!--
+      Layer for "Select text" / "Copy" modes. Populated at runtime
+      with one invisible-but-selectable <span> per OCR line, placed
+      at the exact CSS-px translation of each line's image bbox so
+      the native browser selection highlight lines up with the
+      visible text in the screenshot beneath. Pointer events are
+      enabled on the spans (not the container) so empty regions
+      still let Lens-mode drawing work if the user toggles modes.
+    -->
+    <div id="text-layer" hidden></div>
+
+    <!--
+      Layer for "Translate in place" mode. One opaque pill per OCR
+      line, anchored to the same bbox, containing the translated
+      text. Background covers the original so the translation reads
+      cleanly. Click a pill to peek the original.
+    -->
+    <div id="translate-layer" hidden></div>
+
+    <div id="ui-layer">
+      <div id="hint">
+        <span class="pencil-dot"></span>
+        Draw a circle around anything
+        <span class="kbd">Esc</span>
+        <span class="hint-sep">·</span>
+        <span id="hint-action">Release to search with Lens</span>
+      </div>
+
+      <!--
+        Translate target-language picker. Hidden by default; the
+        overlay.js makes it visible only while the user has the
+        "Translate" action selected in the menu. It re-anchors next
+        to the action menu (above/below/right of it, depending on
+        the menu's dock position).
+      -->
+      <div id="lang-picker" hidden>
+        <button id="lang-picker-button" class="lang-button" type="button"
+                aria-haspopup="listbox" aria-expanded="false">
+          <span class="lang-globe" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="9" />
+              <path d="M3 12h18" />
+              <path d="M12 3a14 14 0 0 1 0 18" />
+              <path d="M12 3a14 14 0 0 0 0 18" />
+            </svg>
+          </span>
+          <span class="lang-label">Auto → <span id="lang-target-name">English</span></span>
+          <span class="lang-chevron" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M6 9l6 6 6-6" />
+            </svg>
+          </span>
+        </button>
+        <!-- Populated dynamically from LANGUAGES in overlay.js -->
+        <ul id="lang-picker-list" role="listbox" hidden></ul>
+      </div>
+
+      <!--
+        Floating quick-action menu. Positioned via the parent's
+        data-position attribute (set from overlay.js based on the
+        user's "menuPosition" setting). The menu hides itself the
+        moment the user starts drawing, so it never obstructs the
+        lasso (see overlay.js onDown).
+      -->
+      <nav id="action-menu" data-position="top" aria-label="Capture action">
+        <button class="action" data-action="lens" type="button" title="Search with Google Lens">
+          <span class="action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="11" cy="11" r="6" />
+              <path d="m20 20-3.5-3.5" />
+              <circle cx="11" cy="11" r="2" fill="currentColor" stroke="none" />
+            </svg>
+          </span>
+          <span class="action-label">Lens</span>
+        </button>
+
+        <button class="action" data-action="translate" type="button" title="Translate selected text">
+          <span class="action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 5h7" />
+              <path d="M9 3v2c0 4-2.5 7-5 8" />
+              <path d="M4 13c2.5 0 5 1.5 7 4" />
+              <path d="M13 21l4-9 4 9" />
+              <path d="M14.5 17h5" />
+            </svg>
+          </span>
+          <span class="action-label">Translate</span>
+        </button>
+
+        <button class="action" data-action="ocr" type="button" title="Select text (OCR)">
+          <span class="action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <path d="M4 8V5a1 1 0 0 1 1-1h3" />
+              <path d="M20 8V5a1 1 0 0 0-1-1h-3" />
+              <path d="M4 16v3a1 1 0 0 0 1 1h3" />
+              <path d="M20 16v3a1 1 0 0 1-1 1h-3" />
+              <path d="M8 9h8" />
+              <path d="M8 13h6" />
+            </svg>
+          </span>
+          <span class="action-label">Select text</span>
+        </button>
+
+        <button class="action" data-action="copy" type="button" title="Copy text to clipboard">
+          <span class="action-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor" stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <rect x="9" y="9" width="11" height="11" rx="2" />
+              <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+            </svg>
+          </span>
+          <span class="action-label">Copy text</span>
+        </button>
+      </nav>
+
+      <div id="toast"></div>
+
+      <!--
+        Lightweight loading pill for the rect-OCR flows. Centered
+        on the viewport so it's visible regardless of where the
+        user drew their rectangle. The (previously full-screen)
+        scanner line was retired with the move to per-rect OCR
+        since the pass is much shorter now.
+      -->
+      <div id="ocr-loading" hidden>
+        <div class="ocr-loading-pill">
+          <span class="ocr-loading-ring" aria-hidden="true"></span>
+          <span id="ocr-loading-text">Reading text…</span>
+        </div>
+      </div>
+
+      <!--
+        Floating toolbar that appears next to the user's text
+        selection in OCR / Copy modes. Has Copy + Translate buttons.
+        Positioned at runtime via overlay.js using the selection's
+        bounding client rect.
+      -->
+      <div id="selection-toolbar" hidden>
+        <button id="sel-copy" class="sel-btn" type="button" title="Copy selection (Ctrl+C)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <rect x="9" y="9" width="11" height="11" rx="2" />
+            <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+          </svg>
+          <span class="sel-btn-label" data-label="Copy">Copy</span>
+        </button>
+        <button id="sel-translate" class="sel-btn" type="button" title="Translate selection">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M4 5h7" />
+            <path d="M9 3v2c0 4-2.5 7-5 8" />
+            <path d="M4 13c2.5 0 5 1.5 7 4" />
+            <path d="M13 21l4-9 4 9" />
+            <path d="M14.5 17h5" />
+          </svg>
+          <span class="sel-btn-label" data-label="Translate">Translate</span>
+        </button>
+      </div>
+
+      <!--
+        Result card — fills two roles in one DOM:
+          1. While OCR + Translate are running, shows the loading
+             state (gradient ring, status text, animated progress).
+          2. Once the API returns, transforms in-place into the
+             actual result view (original text + translated text +
+             copy buttons + re-translate language picker).
+        Hidden by default; overlay.js toggles `.show` and swaps
+        between `.state-loading` / `.state-result` / `.state-error`.
+      -->
+      <section id="result-card" class="result-card" hidden aria-live="polite">
+        <button class="result-close" id="result-close" type="button" title="Close (Esc)">
+          <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+               stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+            <path d="M6 6l12 12M18 6l-12 12" />
+          </svg>
+        </button>
+
+        <!-- ----- Loading state ----- -->
+        <div class="result-loading">
+          <div class="loading-ring" aria-hidden="true"></div>
+          <div class="loading-status" id="loading-status">Reading text…</div>
+          <div class="loading-progress">
+            <div class="loading-bar" id="loading-bar"></div>
+          </div>
+          <div class="loading-sub" id="loading-sub">First run downloads ~16 MB of OCR data — only happens once.</div>
+        </div>
+
+        <!-- ----- Result state ----- -->
+        <div class="result-body">
+          <div class="result-meta">
+            <span class="result-pill" id="result-detected">Detected: …</span>
+            <span class="result-pill result-pill-target" id="result-target">→ English</span>
+          </div>
+          <div class="result-section">
+            <div class="result-label">Translation</div>
+            <div class="result-text result-translated" id="result-translated"></div>
+            <button class="result-btn" id="copy-translated" type="button">
+              <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                   stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+                <rect x="9" y="9" width="11" height="11" rx="2" />
+                <path d="M5 15V6a2 2 0 0 1 2-2h9" />
+              </svg>
+              <span class="result-btn-label" data-label="Copy translation">Copy translation</span>
+            </button>
+          </div>
+          <details class="result-section result-original-wrap">
+            <summary>Show original text</summary>
+            <div class="result-text result-original" id="result-original"></div>
+            <button class="result-btn result-btn-ghost" id="copy-original" type="button">
+              <span class="result-btn-label" data-label="Copy original">Copy original</span>
+            </button>
+          </details>
+        </div>
+
+        <!-- ----- Error state ----- -->
+        <div class="result-error">
+          <div class="error-icon" aria-hidden="true">
+            <svg viewBox="0 0 24 24" fill="none" stroke="currentColor"
+                 stroke-width="2" stroke-linecap="round" stroke-linejoin="round">
+              <circle cx="12" cy="12" r="10" />
+              <path d="M12 8v5" />
+              <path d="M12 16h.01" />
+            </svg>
+          </div>
+          <div class="error-title">Couldn't translate</div>
+          <div class="error-message" id="error-message">Something went wrong.</div>
+          <button class="result-btn" id="error-retry" type="button">Try again</button>
+        </div>
+      </section>
+    </div>
+
+    <script src="overlay.js"></script>
+  </body>
+</html>
