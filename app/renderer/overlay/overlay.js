@@ -118,6 +118,7 @@
     convertToRect: true,
     showActionMenu: true,
     menuPosition: "top",
+    menuAlign: "center",
     defaultAction: "lens",
     translateTo: "en",
   };
@@ -252,6 +253,7 @@
     }
 
     actionMenu.dataset.position = settings.menuPosition || "top";
+    actionMenu.dataset.align    = settings.menuAlign    || "center";
     paintSelectedAction();
 
     for (const btn of actionMenu.querySelectorAll(".action")) {
@@ -336,10 +338,14 @@
       langList.appendChild(frag);
     }
 
-    // Anchor picker next to the action menu based on dock position.
+    // Anchor picker next to the action menu based on dock position
+    // AND alignment so it always sits flush with the menu strip
+    // (centred / start-edge / end-edge).
     const pos = settings.menuPosition || "top";
+    const align = settings.menuAlign || "center";
     langPicker.dataset.position = pos;
-    Object.assign(langPicker.style, anchorForPickerPosition(pos));
+    langPicker.dataset.align = align;
+    Object.assign(langPicker.style, anchorForPicker(pos, align));
 
     paintSelectedLang();
     updateLangPickerVisibility();
@@ -357,21 +363,37 @@
     document.addEventListener("click", () => closeLangList());
   }
 
-  function anchorForPickerPosition(pos) {
-    // Reset every property so previous positions don't leak in.
+  /**
+   * Pick the picker's CSS offsets so it always sits next to the
+   * action menu — same dock edge (perpendicular axis matches the
+   * menu) and same alignment (parallel axis matches start/center/
+   * end). The reset object clears every offset so the previous
+   * position doesn't leak between sessions.
+   */
+  function anchorForPicker(pos, align) {
     const base = {
       top: "auto", bottom: "auto", left: "auto", right: "auto",
     };
+    const alignCss = (axis /* "h" | "v" */) => {
+      if (axis === "h") {
+        if (align === "start") return { left: "24px" };
+        if (align === "end")   return { right: "24px" };
+        return { left: "50%" };
+      }
+      if (align === "start") return { top: "64px" };
+      if (align === "end")   return { bottom: "64px" };
+      return { top: "50%" };
+    };
     switch (pos) {
       case "bottom":
-        return { ...base, bottom: "144px", left: "50%" };
+        return { ...base, bottom: "144px", ...alignCss("h") };
       case "left":
-        return { ...base, top: "50%", left: "100px" };
+        return { ...base, left: "100px", ...alignCss("v") };
       case "right":
-        return { ...base, top: "50%", right: "100px" };
+        return { ...base, right: "100px", ...alignCss("v") };
       case "top":
       default:
-        return { ...base, top: "116px", left: "50%" };
+        return { ...base, top: "116px", ...alignCss("h") };
     }
   }
 

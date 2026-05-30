@@ -109,6 +109,19 @@ const DEFAULTS = Object.freeze({
   menuPosition: "top",
 
   /**
+   * Alignment of the menu along its dock axis.
+   *   "start"  — top/bottom → left edge ; left/right → top edge
+   *   "center" — middle of the axis (default, matches the Windows
+   *              taskbar's "centered taskbar buttons" behaviour)
+   *   "end"    — top/bottom → right edge ; left/right → bottom edge
+   *
+   * The same value is used regardless of menuPosition; the renderer
+   * picks the correct visual edge based on whichever side the menu
+   * is docked to.
+   */
+  menuAlign: "center",
+
+  /**
    * Default action that is pre-selected when the overlay opens.
    *   "lens"      — Google Lens visual search (draws lasso)
    *   "translate" — no-draw: full-screen OCR + in-place translation
@@ -161,6 +174,7 @@ function sanitize(s) {
   const validModes = ["tab", "window"];
   const validPos = ["left", "center", "right"];
   const validMenuPos = ["top", "bottom", "left", "right"];
+  const validMenuAlign = ["start", "center", "end"];
   const validActions = ["lens", "translate", "ocr", "copy"];
   const validLangs = [
     "en", "hi", "es", "fr", "de", "it", "pt", "ru",
@@ -182,6 +196,7 @@ function sanitize(s) {
 
     showActionMenu: s.showActionMenu === undefined ? true : !!s.showActionMenu,
     menuPosition:   validMenuPos.includes(s.menuPosition) ? s.menuPosition : "top",
+    menuAlign:      validMenuAlign.includes(s.menuAlign) ? s.menuAlign : "center",
     defaultAction:  validActions.includes(s.defaultAction) ? s.defaultAction : "lens",
     translateTo:    validLangs.includes(s.translateTo) ? s.translateTo : "en",
   };

@@ -210,43 +210,115 @@ body[data-mode="translate"] {
 
 /* ----- Position variants ----- */
 
+/* ----- Dock position (which edge of the overlay the menu lives on) -----
+   Each [data-position] sets the docked edge + flex direction.
+   Alignment along that edge is layered on via [data-align="..."]
+   selectors below — they reset whichever offset (left/right or
+   top/bottom) the position rule established so they can clamp to
+   the opposite corner without leaking the centered transform.
+   ---------------------------------------------------------------- */
+
 #action-menu[data-position="top"] {
   top: 64px;
-  left: 50%;
   flex-direction: row;
 }
-#action-menu[data-position="top"].show {
-  transform: translate(-50%, 0) scale(1);
-}
-
 #action-menu[data-position="bottom"] {
   bottom: 88px;
-  left: 50%;
   flex-direction: row;
+}
+#action-menu[data-position="left"] {
+  left: 24px;
+  flex-direction: column;
+}
+#action-menu[data-position="right"] {
+  right: 24px;
+  flex-direction: column;
+}
+
+/* ----- Horizontal axis alignment (top + bottom positions) ----- */
+
+/* Center is the default visual + animation pair. */
+#action-menu[data-position="top"][data-align="center"],
+#action-menu[data-position="bottom"][data-align="center"] {
+  left: 50%;
+  right: auto;
   transform: translate(-50%, 8px) scale(0.96);
 }
-#action-menu[data-position="bottom"].show {
+#action-menu[data-position="top"][data-align="center"].show,
+#action-menu[data-position="bottom"][data-align="center"].show {
   transform: translate(-50%, 0) scale(1);
 }
 
-#action-menu[data-position="left"] {
+#action-menu[data-position="top"][data-align="start"],
+#action-menu[data-position="bottom"][data-align="start"] {
   left: 24px;
+  right: auto;
+  transform: translate(0, 8px) scale(0.96);
+}
+#action-menu[data-position="top"][data-align="start"].show,
+#action-menu[data-position="bottom"][data-align="start"].show {
+  transform: translate(0, 0) scale(1);
+}
+
+#action-menu[data-position="top"][data-align="end"],
+#action-menu[data-position="bottom"][data-align="end"] {
+  right: 24px;
+  left: auto;
+  transform: translate(0, 8px) scale(0.96);
+}
+#action-menu[data-position="top"][data-align="end"].show,
+#action-menu[data-position="bottom"][data-align="end"].show {
+  transform: translate(0, 0) scale(1);
+}
+
+/* ----- Vertical axis alignment (left + right positions) ----- */
+
+#action-menu[data-position="left"][data-align="center"],
+#action-menu[data-position="right"][data-align="center"] {
   top: 50%;
-  flex-direction: column;
+  bottom: auto;
   transform: translate(-8px, -50%) scale(0.96);
 }
-#action-menu[data-position="left"].show {
+#action-menu[data-position="right"][data-align="center"] {
+  transform: translate(8px, -50%) scale(0.96);
+}
+#action-menu[data-position="left"][data-align="center"].show {
+  transform: translate(0, -50%) scale(1);
+}
+#action-menu[data-position="right"][data-align="center"].show {
   transform: translate(0, -50%) scale(1);
 }
 
-#action-menu[data-position="right"] {
-  right: 24px;
-  top: 50%;
-  flex-direction: column;
-  transform: translate(8px, -50%) scale(0.96);
+#action-menu[data-position="left"][data-align="start"],
+#action-menu[data-position="right"][data-align="start"] {
+  top: 64px;
+  bottom: auto;
 }
-#action-menu[data-position="right"].show {
-  transform: translate(0, -50%) scale(1);
+#action-menu[data-position="left"][data-align="start"] {
+  transform: translate(-8px, 0) scale(0.96);
+}
+#action-menu[data-position="right"][data-align="start"] {
+  transform: translate(8px, 0) scale(0.96);
+}
+#action-menu[data-position="left"][data-align="start"].show,
+#action-menu[data-position="right"][data-align="start"].show {
+  transform: translate(0, 0) scale(1);
+}
+
+#action-menu[data-position="left"][data-align="end"],
+#action-menu[data-position="right"][data-align="end"] {
+  bottom: 64px;
+  top: auto;
+}
+#action-menu[data-position="left"][data-align="end"] {
+  transform: translate(-8px, 0) scale(0.96);
+}
+#action-menu[data-position="right"][data-align="end"] {
+  transform: translate(8px, 0) scale(0.96);
+}
+#action-menu[data-position="left"][data-align="end"].show,
+#action-menu[data-position="right"][data-align="end"].show {
+  transform: translate(0, 0) scale(1);
 }
 
 /* Fade out cleanly when drawing starts. */
@@ -429,17 +501,41 @@ body.fading {
   transition: opacity 0.2s ease, transform 0.2s cubic-bezier(0.2, 0.8, 0.2, 1);
 }
 
-#lang-picker.show {
+/* ---- Top/Bottom dock × centre align: pin to 50% with -50% offset */
+#lang-picker[data-position="top"][data-align="center"].show,
+#lang-picker[data-position="bottom"][data-align="center"].show {
   opacity: 1;
   transform: translate(-50%, 0);
 }
+#lang-picker[data-position="bottom"][data-align="center"] {
+  transform: translate(-50%, 6px);
+}
 
-#lang-picker[data-position="left"]    { transform: translate(-6px, 0); }
-#lang-picker[data-position="left"].show   { transform: translate(0, 0); }
-#lang-picker[data-position="right"]   { transform: translate(6px, 0); }
-#lang-picker[data-position="right"].show  { transform: translate(0, 0); }
-#lang-picker[data-position="bottom"]  { transform: translate(-50%, 6px); }
-#lang-picker[data-position="bottom"].show { transform: translate(-50%, 0); }
+/* ---- Top/Bottom dock × start|end align: anchor to corner, no -50% */
+#lang-picker[data-position="top"][data-align="start"],
+#lang-picker[data-position="top"][data-align="end"],
+#lang-picker[data-position="bottom"][data-align="start"],
+#lang-picker[data-position="bottom"][data-align="end"] {
+  transform: translate(0, -6px);
+}
+#lang-picker[data-position="bottom"][data-align="start"],
+#lang-picker[data-position="bottom"][data-align="end"] {
+  transform: translate(0, 6px);
+}
+#lang-picker[data-position="top"][data-align="start"].show,
+#lang-picker[data-position="top"][data-align="end"].show,
+#lang-picker[data-position="bottom"][data-align="start"].show,
+#lang-picker[data-position="bottom"][data-align="end"].show {
+  opacity: 1;
+  transform: translate(0, 0);
+}
+
+/* ---- Left/Right dock: horizontal slide is the same regardless of
+       alignment (the dock-axis offset is handled via top/bottom). */
+#lang-picker[data-position="left"]      { transform: translate(-6px, 0); }
+#lang-picker[data-position="left"].show { transform: translate(0, 0); opacity: 1; }
+#lang-picker[data-position="right"]     { transform: translate(6px, 0); }
+#lang-picker[data-position="right"].show { transform: translate(0, 0); opacity: 1; }
 
 .lang-button {
   display: inline-flex;

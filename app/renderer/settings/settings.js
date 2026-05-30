@@ -32,6 +32,10 @@
     actionMenuOpts: document.getElementById("action-menu-opts"),
     defaultAction: document.querySelectorAll('input[name="defaultAction"]'),
     menuPosition: document.querySelectorAll('input[name="menuPosition"]'),
+    menuAlign: document.querySelectorAll('input[name="menuAlign"]'),
+    menuAlignHint: document.getElementById("menu-align-hint"),
+    menuAlignStartLabel: document.querySelector('[data-align-label="start"]'),
+    menuAlignEndLabel: document.querySelector('[data-align-label="end"]'),
     menuStripPreview: document.getElementById("menu-strip-preview"),
     saveStatus: document.getElementById("save-status"),
     close: document.getElementById("close"),
@@ -101,7 +105,15 @@
   for (const r of els.menuPosition) {
     r.addEventListener("change", () => {
       state = update({ menuPosition: r.value });
-      paintMenuPreview(state.menuPosition);
+      paintMenuAlignLabels(state.menuPosition);
+      paintMenuPreview(state.menuPosition, state.menuAlign);
+    });
+  }
+
+  for (const r of els.menuAlign) {
+    r.addEventListener("change", () => {
+      state = update({ menuAlign: r.value });
+      paintMenuPreview(state.menuPosition, state.menuAlign);
     });
   }
 
@@ -147,11 +159,14 @@
       r.checked = r.value === (s.defaultAction || "lens");
     for (const r of els.menuPosition)
       r.checked = r.value === (s.menuPosition || "top");
+    for (const r of els.menuAlign)
+      r.checked = r.value === (s.menuAlign || "center");
 
     paintWindowVisibility(s.openMode);
     paintPreview(s);
     paintActionMenuVisibility(s.showActionMenu !== false);
-    paintMenuPreview(s.menuPosition || "top");
+    paintMenuAlignLabels(s.menuPosition || "top");
+    paintMenuPreview(s.menuPosition || "top", s.menuAlign || "center");
   }
 
   /* ---------- hotkey capture ---------- */
@@ -278,12 +293,36 @@
    * Update the little "screen" mockup to show a docked strip of
    * dots where the action menu will appear on the overlay. Pure
    * visual feedback so users picking "Left" vs "Top" can see what
-   * they're choosing without firing the hotkey.
+   * they're choosing without firing the hotkey. Reflects both
+   * position (which edge) and align (where along that edge).
    */
-  function paintMenuPreview(position) {
+  function paintMenuPreview(position, align) {
     const strip = els.menuStripPreview;
     if (!strip) return;
     strip.dataset.position = position || "top";
+    strip.dataset.align = align || "center";
+  }
+
+  /**
+   * The "start / center / end" choices need different verbal labels
+   * depending on whether the docked axis is horizontal (top/bottom)
+   * or vertical (left/right). Keeps the UI concrete:
+   *   horizontal → Left / Center / Right
+   *   vertical   → Top  / Center / Bottom
+   */
+  function paintMenuAlignLabels(position) {
+    const isHorizontal = position === "top" || position === "bottom";
+    if (els.menuAlignStartLabel) {
+      els.menuAlignStartLabel.textContent = isHorizontal ? "Left" : "Top";
+    }
+    if (els.menuAlignEndLabel) {
+      els.menuAlignEndLabel.textContent = isHorizontal ? "Right" : "Bottom";
+    }
+    if (els.menuAlignHint) {
+      els.menuAlignHint.textContent = isHorizontal
+        ? "Where along the horizontal edge the menu sits."
+        : "Where along the vertical edge the menu sits.";
+    }
   }
 
   /**

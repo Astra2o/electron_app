@@ -1,8 +1,8 @@
 {
   "name": "circle-to-lens",
-  "version": "0.1.0",
+  "version": "0.2.0",
   "private": true,
-  "description": "System-wide Circle-to-Lens for Windows. Press a global hotkey, draw a circle anywhere on your screen with a white pencil + RGB-rainbow glow, and Google Lens searches the cropped region instantly. Also OCR (select text from screen) and in-place translation.",
+  "description": "System-wide Circle-to-Lens for desktop. Press a global hotkey and draw on your screen with a white pencil + RGB glow to (1) search the cropped region in Google Lens, (2) OCR text in-place, or (3) translate it in-place with a frosted-glass overlay. Powered by Tesseract.js (bundled tessdata_best) and Google Translate's public endpoint. Windows-first; macOS build target included.",
   "author": "Circle to Lens",
   "license": "MIT",
   "main": "app/main/index.js",
@@ -13,7 +13,10 @@
     "prebuild":         "npm run icon",
     "build":            "electron-builder --win",
     "build:portable":   "npm run icon && electron-builder --win portable",
-    "build:installer":  "npm run icon && electron-builder --win nsis"
+    "build:installer":  "npm run icon && electron-builder --win nsis",
+    "build:mac":        "npm run icon && electron-builder --mac",
+    "build:mac:dmg":    "npm run icon && electron-builder --mac dmg",
+    "build:mac:zip":    "npm run icon && electron-builder --mac zip"
   },
   "devDependencies": {
     "electron": "^32.2.0",
@@ -54,6 +57,24 @@
       "installerIcon":       "build/icon.ico",
       "uninstallerIcon":     "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico"
+    },
+    "mac": {
+      "icon": "build/icon.icns",
+      "category": "public.app-category.productivity",
+      "hardenedRuntime": true,
+      "gatekeeperAssess": false,
+      "target": [
+        { "target": "dmg", "arch": ["arm64", "x64"] },
+        { "target": "zip", "arch": ["arm64", "x64"] }
+      ]
+    },
+    "dmg": {
+      "title": "Circle to Lens ${version}",
+      "icon": "build/icon.icns",
+      "contents": [
+        { "x": 130, "y": 220, "type": "file" },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
     }
   }
 }

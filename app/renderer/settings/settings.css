@@ -495,13 +495,14 @@ p.hint {
   background-size: 8px 8px;
 }
 
-/* Horizontal layouts (top/bottom): pills in a row. */
+/* Horizontal layouts (top/bottom): pills in a row.
+   Default align = center (50% + translate -50%). Start/end override
+   left/right with a small gutter so the strip sits flush against
+   the corner like a real docked taskbar. */
 .menu-strip[data-position="top"],
 .menu-strip[data-position="bottom"] {
   height: 18px;
   width: 78px;
-  left: 50%;
-  transform: translateX(-50%);
 }
 .menu-strip[data-position="top"]    { top: 10px; }
 .menu-strip[data-position="bottom"] { bottom: 10px; }
@@ -510,19 +511,51 @@ p.hint {
   background-position: 0 50%, 20px 50%, 40px 50%, 60px 50%;
 }
 
+/* Horizontal alignment along the dock axis. */
+.menu-strip[data-position="top"][data-align="center"],
+.menu-strip[data-position="bottom"][data-align="center"] {
+  left: 50%;
+  transform: translateX(-50%);
+}
+.menu-strip[data-position="top"][data-align="start"],
+.menu-strip[data-position="bottom"][data-align="start"] {
+  left: 10px;
+  right: auto;
+}
+.menu-strip[data-position="top"][data-align="end"],
+.menu-strip[data-position="bottom"][data-align="end"] {
+  right: 10px;
+  left: auto;
+}
+
 /* Vertical layouts (left/right): pills stacked. */
 .menu-strip[data-position="left"],
 .menu-strip[data-position="right"] {
   width: 18px;
   height: 78px;
-  top: 50%;
-  transform: translateY(-50%);
 }
 .menu-strip[data-position="left"]  { left: 10px; }
 .menu-strip[data-position="right"] { right: 10px; }
 .menu-strip[data-position="left"]::before,
 .menu-strip[data-position="right"]::before {
   background-position: 50% 0, 50% 20px, 50% 40px, 50% 60px;
+}
+
+/* Vertical alignment along the dock axis. */
+.menu-strip[data-position="left"][data-align="center"],
+.menu-strip[data-position="right"][data-align="center"] {
+  top: 50%;
+  transform: translateY(-50%);
+}
+.menu-strip[data-position="left"][data-align="start"],
+.menu-strip[data-position="right"][data-align="start"] {
+  top: 10px;
+  bottom: auto;
+}
+.menu-strip[data-position="left"][data-align="end"],
+.menu-strip[data-position="right"][data-align="end"] {
+  bottom: 10px;
+  top: auto;
 }
 
 /* ---------- Footer ---------- */

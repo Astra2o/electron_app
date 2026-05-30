@@ -133,11 +133,30 @@
             </label>
           </div>
 
+          <h3>Menu alignment</h3>
+          <p class="hint" id="menu-align-hint">
+            Where along the docked edge the menu sits.
+          </p>
+          <div class="seg seg-pos" id="menuAlign-seg">
+            <label class="seg-item">
+              <input type="radio" name="menuAlign" value="start" />
+              <span data-align-label="start">Left</span>
+            </label>
+            <label class="seg-item">
+              <input type="radio" name="menuAlign" value="center" />
+              <span>Center</span>
+            </label>
+            <label class="seg-item">
+              <input type="radio" name="menuAlign" value="end" />
+              <span data-align-label="end">Right</span>
+            </label>
+          </div>
+
           <div class="preview-frame menu-preview" aria-hidden="true">
             <div class="screen">
               <div class="menu-strip" id="menu-strip-preview"></div>
             </div>
-            <div class="preview-caption">Menu position preview</div>
+            <div class="preview-caption">Menu position + alignment preview</div>
           </div>
         </div>
       </section>
