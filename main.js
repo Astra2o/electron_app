@@ -39,6 +39,7 @@ const path = require("node:path");
 const { submitToLens } = require("./lens");
 const settingsStore = require("./settings-store");
 const startMenuShortcut = require("./start-menu-shortcut");
+const macShortcuts = require("./mac-shortcuts");
 const { getAppIcon } = require("./icon-renderer");
 
 /**
@@ -102,11 +103,14 @@ app.whenReady().then(async () => {
 
   registerShortcut();
   buildTray();
+  buildAppMenu();
 
-  // Best-effort: keep the Start menu shortcut up to date (idempotent
-  // via a stamp file, so this is ~0ms on subsequent launches).
+  // Best-effort: keep OS launch shortcuts up to date (idempotent).
   startMenuShortcut.ensure().catch((e) =>
     console.warn("[main] shortcut ensure rejected:", e?.message || e),
+  );
+  macShortcuts.ensure({ hotkey: HOTKEY }).catch((e) =>
+    console.warn("[main] mac shortcut ensure rejected:", e?.message || e),
   );
 
   const s = initialSettings;
@@ -127,7 +131,7 @@ app.whenReady().then(async () => {
     // we're alive in the tray.
     notify(
       "Circle to Lens is running",
-      `Press ${HOTKEY} anywhere on Windows to capture. Right-click the tray icon for more options.`,
+      `Press ${HOTKEY} anywhere to capture. Click the menu bar icon for more options.`,
     );
   }
 
@@ -195,9 +199,11 @@ function buildTray() {
  */
 function refreshTrayMenu() {
   if (!tray) return;
-  tray.setToolTip(
-    `Circle to Lens — ${HOTKEY}\nClick to open · Right-click for menu`,
-  );
+  const trayHint =
+    process.platform === "darwin"
+      ? "Click to open · Right-click for menu"
+      : "Click to open · Right-click for menu";
+  tray.setToolTip(`Circle to Lens — ${HOTKEY}\n${trayHint}`);
   tray.setContextMenu(
     Menu.buildFromTemplate([
       { label: `Capture now  (${HOTKEY})`, click: activateLasso },
@@ -208,6 +214,83 @@ function refreshTrayMenu() {
       { label: "Quit Circle to Lens", click: () => app.exit(0) },
     ]),
   );
+}
+
+/**
+ * macOS application menu with standard shortcuts (⌘Q, ⌘,, etc.).
+ */
+function buildAppMenu() {
+  if (process.platform !== "darwin") return;
+  refreshAppMenu();
+}
+
+function refreshAppMenu() {
+  if (process.platform !== "darwin") return;
+  const template = [
+    {
+      label: app.name,
+      submenu: [
+        { role: "about" },
+        { type: "separator" },
+        {
+          label: "Capture Now",
+          accelerator: HOTKEY,
+          click: activateLasso,
+        },
+        { label: "Open Home", click: openHome },
+        {
+          label: "Settings…",
+          accelerator: "Command+,",
+          click: openSettings,
+        },
+        { type: "separator" },
+        { role: "services" },
+        { type: "separator" },
+        { role: "hide" },
+        { role: "hideOthers" },
+        { role: "unhide" },
+        { type: "separator" },
+        { role: "quit" },
+      ],
+    },
+    {
+      label: "Edit",
+      submenu: [
+        { role: "undo" },
+        { role: "redo" },
+        { type: "separator" },
+        { role: "cut" },
+        { role: "copy" },
+        { role: "paste" },
+        { role: "selectAll" },
+      ],
+    },
+    {
+      label: "Capture",
+      submenu: [
+        {
+          label: "Capture Now",
+          accelerator: HOTKEY,
+          click: activateLasso,
+        },
+        { type: "separator" },
+        {
+          label: "Settings…",
+          accelerator: "Command+,",
+          click: openSettings,
+        },
+      ],
+    },
+    {
+      label: "Window",
+      submenu: [
+        { role: "minimize" },
+        { role: "zoom" },
+        { role: "close" },
+      ],
+    },
+  ];
+  Menu.setApplicationMenu(Menu.buildFromTemplate(template));
 }
 
 /**
@@ -385,6 +468,9 @@ ipcMain.handle("home:set-show-home-on-startup", (_e, enabled) => {
 });
 
 ipcMain.handle("home:check-shortcut", () => {
+  if (process.platform === "darwin") {
+    return macShortcuts.check();
+  }
   if (process.platform !== "win32") return false;
   const appdata = process.env.APPDATA || "";
   if (!appdata) return false;
@@ -405,6 +491,10 @@ ipcMain.handle("home:check-shortcut", () => {
 
 ipcMain.handle("home:recreate-shortcut", async () => {
   try {
+    if (process.platform === "darwin") {
+      const result = await macShortcuts.ensure({ force: true, hotkey: HOTKEY });
+      return !!result || macShortcuts.check();
+    }
     const result = await startMenuShortcut.ensure();
     return !!result;
   } catch (err) {
@@ -501,6 +591,8 @@ function applyHotkey(accel) {
   if (ok) {
     HOTKEY = accel;
     refreshTrayMenu();
+    refreshAppMenu();
+    macShortcuts.ensure({ hotkey: HOTKEY, force: true }).catch(() => undefined);
     console.log(`[main] Global hotkey now: ${HOTKEY}`);
   } else {
     console.warn(`[main] Failed to register hotkey ${accel}`);
@@ -518,12 +610,15 @@ function applyHotkey(accel) {
  * runs (where the launcher is electron.exe + the app dir) also work.
  */
 function applyAutoStart(enabled) {
-  if (process.platform !== "win32") return;
+  if (process.platform !== "win32" && process.platform !== "darwin") return;
   try {
     const opts = { openAtLogin: !!enabled };
     if (!app.isPackaged) {
       opts.path = process.execPath;
       opts.args = [app.getAppPath()];
+    }
+    if (process.platform === "darwin") {
+      opts.openAsHidden = true;
     }
     app.setLoginItemSettings(opts);
   } catch (err) {

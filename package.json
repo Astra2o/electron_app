@@ -7,13 +7,15 @@
   "license": "MIT",
   "main": "main.js",
   "scripts": {
-    "start": "electron .",
-    "dev": "electron . --inspect=9229",
-    "icon": "electron scripts/build-icon.js",
+    "start": "env -u ELECTRON_RUN_AS_NODE electron .",
+    "dev": "env -u ELECTRON_RUN_AS_NODE electron . --inspect=9229",
+    "icon": "env -u ELECTRON_RUN_AS_NODE electron scripts/build-icon.js",
     "prebuild": "npm run icon",
     "build": "electron-builder --win",
     "build:portable": "npm run icon && electron-builder --win portable",
-    "build:installer": "npm run icon && electron-builder --win nsis"
+    "build:installer": "npm run icon && electron-builder --win nsis",
+    "build:mac": "npm run icon && electron-builder --mac dmg",
+    "build:dmg": "npm run build:mac"
   },
   "devDependencies": {
     "electron": "^32.2.0",
@@ -31,6 +33,7 @@
       "lens.js",
       "settings-store.js",
       "start-menu-shortcut.js",
+      "mac-shortcuts.js",
       "icon-renderer.js",
       "overlay/**/*",
       "settings/**/*",
@@ -51,6 +54,30 @@
       "installerIcon": "build/icon.ico",
       "uninstallerIcon": "build/icon.ico",
       "installerHeaderIcon": "build/icon.ico"
-    }
+    },
+    "mac": {
+      "icon": "build/icon.png",
+      "category": "public.app-category.utilities",
+      "target": [
+        { "target": "dmg", "arch": ["arm64"] }
+      ],
+      "extendInfo": {
+        "NSMicrophoneUsageDescription": "Circle to Lens does not use the microphone.",
+        "NSCameraUsageDescription": "Circle to Lens does not use the camera."
+      }
+    },
+    "dmg": {
+      "title": "Circle to Lens",
+      "contents": [
+        { "x": 130, "y": 220 },
+        { "x": 410, "y": 220, "type": "link", "path": "/Applications" }
+      ]
+    },
+    "extraResources": [
+      {
+        "from": "docs/MAC_SHORTCUTS.txt",
+        "to": "MAC_SHORTCUTS.txt"
+      }
+    ]
   }
 }

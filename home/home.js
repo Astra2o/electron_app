@@ -34,6 +34,7 @@
   els.startWithWindows.checked = !!settings.startWithWindows;
   els.showHomeOnStartup.checked = settings.showHomeOnStartup !== false;
   paintHotkey(settings.hotkey || meta.hotkey || "Alt+Shift+S");
+  applyPlatformCopy(meta.platform);
 
   await refreshShortcutStatus();
 
@@ -79,7 +80,8 @@
    * hero paragraph and the "Press the hotkey" step.
    */
   function paintHotkey(accel) {
-    const parts = (accel || "Alt+Shift+S").split("+").map((p) => p.trim());
+    const display = formatHotkeyForDisplay(accel || "Alt+Shift+S");
+    const parts = display.split("+").map((p) => p.trim());
     const hero = document.getElementById("hotkey-chips");
     const step = document.getElementById("hotkey-chips-step");
     const chips = parts
@@ -100,16 +102,70 @@
       .replace(/"/g, "&quot;");
   }
 
+  function formatHotkeyForDisplay(accel) {
+    if (platform !== "darwin") return accel;
+    return accel
+      .replace(/CommandOrControl/g, "⌘")
+      .replace(/Command/g, "⌘")
+      .replace(/Control/g, "⌃")
+      .replace(/Alt/g, "⌥")
+      .replace(/Shift/g, "⇧");
+  }
+
+  let platform = "win32";
+
+  function applyPlatformCopy(p) {
+    platform = p || "win32";
+    const heroP = document.querySelector(".hero-copy > p");
+    if (heroP && platform === "darwin") {
+      heroP.innerHTML =
+        'Press <span id="hotkey-chips"></span> anywhere on your Mac, draw a circle around anything, and search it with Google Lens — straight to your default browser.';
+      paintHotkey(settings.hotkey || meta.hotkey || "Alt+Shift+S");
+    }
+    const autostartTitle = document.querySelector(
+      "#startWithWindows + div .row-title",
+    );
+    if (autostartTitle && platform === "darwin") {
+      autostartTitle.textContent = "Start at login";
+    }
+    const autostartSub = document.querySelector(
+      "#startWithWindows + div .row-sub",
+    );
+    if (autostartSub && platform === "darwin") {
+      autostartSub.textContent =
+        "Launch Circle to Lens automatically when you sign in. The app stays in your menu bar, ready for the hotkey.";
+    }
+    const shortcutTitle = document.querySelector("#searchable-row .row-title");
+    if (shortcutTitle && platform === "darwin") {
+      shortcutTitle.textContent = "Desktop shortcut + cheat sheet";
+    }
+    const footerHint = document.querySelector(".footer-hint");
+    if (footerHint && platform === "darwin") {
+      footerHint.textContent =
+        "Click the menu bar icon for more options at any time.";
+    }
+    const stepP = document.querySelector(".step p");
+    if (stepP && platform === "darwin") {
+      stepP.innerHTML =
+        '<span id="hotkey-chips-step"></span> from <em>any</em> app. Circle to Lens stays in your menu bar. Change the combo in <a href="#" class="link-settings">Settings</a>.';
+      paintHotkey(settings.hotkey || meta.hotkey || "Alt+Shift+S");
+    }
+  }
+
   async function refreshShortcutStatus(forcedOk) {
     const present =
       forcedOk === undefined ? await c2l.checkShortcut() : !!forcedOk;
     if (present) {
       els.searchableStatus.textContent =
-        "Shortcut installed — search “Circle to Lens” in the Start menu.";
+        platform === "darwin"
+          ? "Desktop alias + shortcuts guide installed on your Desktop."
+          : "Shortcut installed — search “Circle to Lens” in the Start menu.";
       els.searchableStatus.className = "row-sub ok";
     } else {
       els.searchableStatus.textContent =
-        "Couldn't find a Start menu shortcut. Click Recreate to add one.";
+        platform === "darwin"
+          ? "Desktop shortcut missing. Click Recreate to add it."
+          : "Couldn't find a Start menu shortcut. Click Recreate to add one.";
       els.searchableStatus.className = "row-sub err";
     }
   }
