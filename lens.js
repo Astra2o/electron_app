@@ -214,35 +214,10 @@ async function tryOpenInNewBrowserWindow(url, dims) {
  * Returns the absolute path of the first one that exists, or null.
  */
 function findBrowserExecutable() {
-  const env = process.env;
-  const pf = env["ProgramFiles"] || "C:\\Program Files";
-  const pf86 = env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
-  const local = env["LOCALAPPDATA"] || "";
-
-  const candidates = [
-    // Chrome
-    path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
-    path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
-    local && path.join(local, "Google", "Chrome", "Application", "chrome.exe"),
-    // Edge — also Chromium-based, supports the same flags.
-    path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
-    path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
-    // Brave
-    path.join(
-      pf,
-      "BraveSoftware",
-      "Brave-Browser",
-      "Application",
-      "brave.exe",
-    ),
-    path.join(
-      pf86,
-      "BraveSoftware",
-      "Brave-Browser",
-      "Application",
-      "brave.exe",
-    ),
-  ].filter(Boolean);
+  const candidates =
+    process.platform === "darwin"
+      ? findMacBrowserCandidates()
+      : findWindowsBrowserCandidates();
 
   for (const c of candidates) {
     try {
@@ -252,6 +227,42 @@ function findBrowserExecutable() {
     }
   }
   return null;
+}
+
+function findWindowsBrowserCandidates() {
+  const env = process.env;
+  const pf = env["ProgramFiles"] || "C:\\Program Files";
+  const pf86 = env["ProgramFiles(x86)"] || "C:\\Program Files (x86)";
+  const local = env["LOCALAPPDATA"] || "";
+
+  return [
+    path.join(pf, "Google", "Chrome", "Application", "chrome.exe"),
+    path.join(pf86, "Google", "Chrome", "Application", "chrome.exe"),
+    local && path.join(local, "Google", "Chrome", "Application", "chrome.exe"),
+    path.join(pf, "Microsoft", "Edge", "Application", "msedge.exe"),
+    path.join(pf86, "Microsoft", "Edge", "Application", "msedge.exe"),
+    path.join(pf, "BraveSoftware", "Brave-Browser", "Application", "brave.exe"),
+    path.join(
+      pf86,
+      "BraveSoftware",
+      "Brave-Browser",
+      "Application",
+      "brave.exe",
+    ),
+  ].filter(Boolean);
+}
+
+function findMacBrowserCandidates() {
+  return [
+    "/Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    path.join(
+      process.env.HOME || "",
+      "Applications/Google Chrome.app/Contents/MacOS/Google Chrome",
+    ),
+    "/Applications/Microsoft Edge.app/Contents/MacOS/Microsoft Edge",
+    "/Applications/Brave Browser.app/Contents/MacOS/Brave Browser",
+    "/Applications/Chromium.app/Contents/MacOS/Chromium",
+  ].filter(Boolean);
 }
 
 function clamp(n, lo, hi) {

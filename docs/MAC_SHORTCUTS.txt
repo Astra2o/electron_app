@@ -1,0 +1,39 @@
+Circle to Lens — Mac shortcuts
+================================
+
+INSTALL (one time)
+  1. Open "Circle to Lens-0.1.0-arm64.dmg"
+  2. Drag "Circle to Lens" into Applications
+  3. First launch: right-click → Open (app is unsigned)
+  4. Allow Screen Recording + Accessibility when prompted
+
+CAPTURE (works from any app)
+  ⌥ Option + Shift + S    Start capture (default hotkey)
+  Esc                     Cancel while drawing
+
+MENU BAR ICON (top-right)
+  Click                   Open Home
+  Double-click            Capture now
+  Right-click             Menu: Capture / Settings / Quit
+
+APP MENU (when Circle to Lens is active)
+  ⌥ Option + Shift + S    Capture now
+  ⌘ ,                     Settings
+  ⌘ Q                     Quit
+
+OPEN THE APP
+  Desktop                 Double-click "Circle to Lens" alias
+  Spotlight               ⌘ Space → "Circle to Lens" → Enter
+  Dock                    Drag from Applications to Dock (optional)
+
+HOME WINDOW
+  Esc                     Close
+  "Try a capture now"     Capture without hotkey
+
+CUSTOM HOTKEY
+  Menu bar → Settings… → Capture hotkey → press your combo
+
+PERMISSIONS
+  System Settings → Privacy & Security
+    • Screen Recording — required
+    • Accessibility — required for global hotkey
